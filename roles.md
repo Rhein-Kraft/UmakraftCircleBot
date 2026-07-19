@@ -13,15 +13,17 @@ of every file that is affected when the split is carried out.
    - [Umamoe](#21-umamoe--raw-data-pipeline)
    - [Refinery](#22-refinery--computed-data-pipeline)
    - [Workshop](#23-workshop--deliverable-manufacturing)
-   - [Distribution](#24-distribution--delivery-routing)
-   - [Core / DB / Utils / Tasks](#25-core--db--utils--tasks--shim-and-support-layer)
+   - [Broadcast](#24-broadcast--event-notification-pipeline)
+   - [Distribution](#25-distribution--command-response-routing)
+   - [Core / DB / Utils / Tasks](#26-core--db--utils--tasks--shim-and-support-layer)
 3. [Boundary Rules](#3-boundary-rules)
 4. [Affected Code — Full Inventory](#4-affected-code--full-inventory)
    - [Files that move to Refinery](#41-files-that-move-to-refinery)
    - [Files that move to Workshop](#42-files-that-move-to-workshop)
-   - [Shims to create or update](#43-shims-to-create-or-update)
-   - [New files to create](#44-new-files-to-create)
-   - [Files that do not change](#45-files-that-do-not-change)
+   - [Files that move to Broadcast](#43-files-that-move-to-broadcast)
+   - [Shims to create or update](#44-shims-to-create-or-update)
+   - [New files to create](#45-new-files-to-create)
+   - [Files that do not change](#46-files-that-do-not-change)
 5. [Implementation Order](#5-implementation-order)
 
 ---
@@ -43,25 +45,35 @@ uma.moe API
 │  Refiner → Compiler → Depot                 │
 └─────────────────────────────────────────────┘
      │
-     ▼
-┌─────────────────────────────────────────────┐
-│  Workshop/                                  │  DELIVERABLES
-│  Draftsman → Fabricator → Validator →       │
-│  Terminal                                   │
-└─────────────────────────────────────────────┘
-     │
-     ▼
-┌─────────────────────────────────────────────┐
-│  Distribution/                              │  ROUTING
-│  Retriever → Dispatcher                     │
-└─────────────────────────────────────────────┘
-     │
-     ▼
-Discord (slash commands, scheduled posts, DMs)
+     ├─────────────────────────────────────────────────────┐
+     │                                                     │
+     ▼                                                     ▼
+┌─────────────────────────────────────────────┐  ┌──────────────────────────────────────────┐
+│  Workshop/                                  │  │  Broadcast/                              │
+│  Draftsman → Fabricator → Validator →       │  │  Broker → Inspector → Archive →          │
+│  Terminal                                   │  │  Announcer                               │
+└─────────────────────────────────────────────┘  └──────────────────────────────────────────┘
+     │                                                     │
+     ▼                                                     │
+┌─────────────────────────────────────────────┐           │
+│  Distribution/                              │           │
+│  Retriever → Dispatcher                     │           │
+└─────────────────────────────────────────────┘           │
+     │                                                     │
+     └─────────────────────┬───────────────────────────────┘
+                           ▼
+                Discord (slash replies, channel posts, DMs)
 ```
 
-Each directory communicates only with the one directly above or below it.
-No directory may skip a layer.
+**Two separate output paths from Refinery/Depot:**
+
+- **Workshop → Distribution** — the **pull** path. A user runs a slash command,
+  the system manufactures a deliverable on demand and sends the reply.
+- **Broadcast** — the **push** path. A cron schedule fires or a data threshold is
+  crossed; the system evaluates who qualifies, claims the notification in the
+  database, renders the content, and delivers it automatically without any user request.
+
+These two paths are completely independent. They never call each other.
 
 ---
 
@@ -127,7 +139,7 @@ assembles finished products, and stores them in the Depot.
 |---|---|---|
 | Refiner | `Refiner/refiner.js` | Domain calculations: fan gain deltas, trends, pace flags, milestone eligibility, achievement checks |
 | Compiler | `Compiler/compiler.js` | Assembles multiple `refinedResult` envelopes from the Refiner into a single `compiledProduct` |
-| Depot | `Depot/depot.js` | Persists compiled products with `id` and `version`; serves Workshop on request |
+| Depot | `Depot/depot.js` | Persists compiled products with `id` and `version`; serves Workshop and Broadcast on request |
 
 **May:**
 - Read from `Vault` (read-only; must not write to Vault)
@@ -149,19 +161,7 @@ fantracking/aggregation/index.js     → Refinery/Compiler  (weekly/monthly aggr
 fantracking/velocity/index.js        → Refinery/Refiner   (rolling 7-day avg + projection)
 fantracking/achievements/daily.js    → Refinery/Refiner   (per-trainer achievement flags)
 fantracking/milestone/eval.js        → Refinery/Refiner   (milestone tier eligibility)
-fantracking/milestone/milestones.js  → Refinery/Refiner   (milestone orchestration)
-fantracking/milestone/tiers.js       → Refinery/Refiner   (tier configuration)
-fantracking/milestone/winners.js     → Refinery/Refiner   (top-3 winner selection)
-fantracking/milestone/cleanup.js     → Refinery/Refiner   (expired milestone cleanup)
-fantracking/warnings/engine.js       → Refinery/Refiner   (pace/quota escalation logic)
-fantracking/warnings/daily.js        → Refinery/Refiner   (daily warning checks)
-fantracking/warnings/weekly.js       → Refinery/Refiner   (weekly warning checks)
-fantracking/warnings/monthly.js      → Refinery/Refiner   (monthly warning checks)
-fantracking/leaderboard/interCircle.js → Refinery/Refiner (inter-circle ranking logic)
 fantracking/leaderboard/snapshotDb.js  → Refinery/Depot   (leaderboard snapshot persistence)
-fantracking/achievements/db.js       → Refinery/Depot     (achievement record persistence)
-fantracking/milestone/db.js          → Refinery/Depot     (milestone record persistence)
-fantracking/warnings/db.js           → Refinery/Depot     (warning state persistence)
 fantracking/links/db.js              → Refinery/Depot     (trainer ↔ Discord identity store)
 fantracking/links/repository.js      → Refinery/Depot     (links data access layer)
 umamoe/umaStats.js                   → Refinery/Refiner   (fan delta computation — MISPLACED)
@@ -195,55 +195,176 @@ deliverables following per-command blueprints, validates them, and hands them to
 - Send deliverables directly to Discord (that is Distribution's job)
 - Modify a deliverable after it has been approved and placed in Terminal
 
-**Current equivalent code in `fantracking/` and `utils/` (to be moved):**
+> **Fabricator vs Broadcast/Announcer:** Fabricator renders the visual product — it builds the
+> Discord embed structure and generates the image card buffer. Broadcast/Announcer is what
+> delivers that rendered product to Discord with dedup and retry tracking. Files that
+> currently do both (e.g. `milestone/notifier.js`, `leaderboard/announcements.js`) will be
+> split: the render logic goes to Fabricator, the delivery logic goes to Announcer.
+
+**Current equivalent code (to be moved):**
 
 ```
-fantracking/reports/fanGain.js          → Workshop/Fabricator  (fan gain card renderer)
-fantracking/reports/leaderboard.js      → Workshop/Fabricator  (leaderboard card renderer)
-fantracking/reports/circleMaster.js     → Workshop/Fabricator  (circle master card renderer)
-fantracking/reports/dailyFanWarning.js  → Workshop/Fabricator  (daily warning card renderer)
-fantracking/reports/dailyAchievement.js → Workshop/Fabricator  (achievement card renderer)
-fantracking/reports/milestone.js        → Workshop/Fabricator  (milestone card renderer)
-fantracking/reports/fanDeficit.js       → Workshop/Fabricator  (fan deficit card renderer)
-fantracking/reports/warnings.js         → Workshop/Fabricator  (warning summary renderer)
-fantracking/reports/warningCard.js      → Workshop/Fabricator  (warning card renderer)
-fantracking/reports/greeting.js         → Workshop/Fabricator  (greeting card renderer)
-fantracking/reports/help.js             → Workshop/Fabricator  (help card renderer)
-fantracking/reports/joindate.js         → Workshop/Fabricator  (join date card renderer)
-fantracking/reports/profile.js          → Workshop/Fabricator  (profile card renderer)
-fantracking/reports/store.js            → Workshop/Fabricator  (store card renderer)
-fantracking/reports/timeline.js         → Workshop/Fabricator  (timeline card renderer)
-fantracking/reports/linkList.js         → Workshop/Fabricator  (link list card renderer)
-fantracking/reports/ImageReportStandard.js → Workshop/Fabricator (shared base renderer + styling)
-fantracking/leaderboard/announcements.js   → Workshop/Fabricator (leaderboard assembly + DM)
-fantracking/milestone/notifier.js          → Workshop/Fabricator (milestone card build + DM compose)
-fantracking/warnings/imageReport.js        → Workshop/Fabricator (warning image report build)
-fantracking/warnings/fanDeficitApi.js      → Workshop/Terminal   (fan deficit product endpoint)
+fantracking/reports/ImageReportStandard.js  → Workshop/Fabricator (shared base renderer)
+fantracking/reports/fanGain.js              → Workshop/Fabricator/reports/
+fantracking/reports/leaderboard.js          → Workshop/Fabricator/reports/
+fantracking/reports/circleMaster.js         → Workshop/Fabricator/reports/
+fantracking/reports/dailyFanWarning.js      → Workshop/Fabricator/reports/
+fantracking/reports/dailyAchievement.js     → Workshop/Fabricator/reports/
+fantracking/reports/milestone.js            → Workshop/Fabricator/reports/
+fantracking/reports/fanDeficit.js           → Workshop/Fabricator/reports/
+fantracking/reports/warnings.js             → Workshop/Fabricator/reports/
+fantracking/reports/warningCard.js          → Workshop/Fabricator/reports/
+fantracking/reports/greeting.js             → Workshop/Fabricator/reports/
+fantracking/reports/help.js                 → Workshop/Fabricator/reports/
+fantracking/reports/joindate.js             → Workshop/Fabricator/reports/
+fantracking/reports/profile.js              → Workshop/Fabricator/reports/
+fantracking/reports/store.js                → Workshop/Fabricator/reports/
+fantracking/reports/timeline.js             → Workshop/Fabricator/reports/
+fantracking/reports/linkList.js             → Workshop/Fabricator/reports/
+
+  ─ Render-only parts of these files move to Fabricator; send parts move to Announcer ─
+fantracking/leaderboard/announcements.js    → render → Fabricator / send → Announcer
+fantracking/milestone/notifier.js           → render → Fabricator / send → Announcer
+fantracking/warnings/imageReport.js         → render → Fabricator / send → Announcer
+fantracking/warnings/fanDeficitApi.js       → Workshop/Terminal (fan deficit endpoint)
 ```
 
 **New files this directory requires (do not exist yet):**
 
 ```
-Workshop/Draftsman/Blueprint/fan_gain.md       ← already in reference ✅
-Workshop/Draftsman/Blueprint/profile.md        ← already in reference ✅
-Workshop/Draftsman/Blueprint/circle.md         ← already in reference ✅
-Workshop/Draftsman/Blueprint/set_fans.md       ← already in reference ✅
-Workshop/Draftsman/Blueprint/link.md           ← already in reference ✅
-Workshop/Draftsman/Blueprint/leaderboard.md    ← to create
-Workshop/Draftsman/Blueprint/milestone.md      ← to create
-Workshop/Draftsman/Blueprint/warning.md        ← to create
-Workshop/Draftsman/Blueprint/greeting.md       ← to create
-Workshop/Draftsman/Blueprint/help.md           ← to create
-Workshop/Validator/validator.js                ← to implement (currently no validation step)
-Workshop/Terminal/terminal.js                  ← to implement (currently no staging layer)
+Workshop/Draftsman/Blueprint/leaderboard.md
+Workshop/Draftsman/Blueprint/milestone.md
+Workshop/Draftsman/Blueprint/warning.md
+Workshop/Draftsman/Blueprint/greeting.md
+Workshop/Draftsman/Blueprint/help.md
+Workshop/Draftsman/Blueprint/total_fan.md
+Workshop/Draftsman/Blueprint/circle_master.md
+Workshop/Draftsman/Blueprint/joindate.md
+Workshop/Draftsman/Blueprint/store.md
+Workshop/Draftsman/Blueprint/timeline.md
+Workshop/Validator/validator.js             ← to implement
 ```
 
 ---
 
-### 2.4 `Distribution/` — Delivery Routing
+### 2.4 `Broadcast/` — Event Notification Pipeline
 
-**One sentence:** Retrieves approved deliverables from the Terminal and routes them to the
-correct Discord destination (channel post, DM, or slash command reply).
+**One sentence:** Detects qualifying notification events from Refinery data, validates
+eligibility, claims each notification atomically in the database, renders and delivers
+the message to Discord with per-step dedup and restart-safe retry.
+
+**Why Broadcast is separate from Workshop:** Workshop is a pull model — it manufactures a
+deliverable in response to a user command. Broadcast is a push model — it fires automatically
+on a cron schedule or data threshold without any user request. The two models have
+incompatible triggers, incompatible recipients (one vs many), incompatible dedup requirements,
+and incompatible retry patterns. Forcing push notifications through Workshop would break
+every department's single-responsibility rule.
+
+**Departments:**
+
+| Department | File | Responsibility |
+|---|---|---|
+| Broker | `Broker/broker.js` | Receives the cron trigger or threshold event; creates a notification job envelope; manages the per-circle queue; runs the boot-time silent-claim guard to prevent spam on restart |
+| Inspector | `Inspector/inspector.js` | Validates eligibility (threshold met, grace period, tally cutoff); checks dedup (has this notification already fired today/this month?); resolves recipients (channels, member DMs, leader DM); selects message variant from the pool |
+| Archive | `Archive/archive.js` | Atomically claims each notification before any message is sent; tracks per-step delivery flags (`channel_sent`, `dm_member_sent`, `dm_leader_sent`); maintains append-only history log; surfaces incomplete records for Announcer retry |
+| Announcer | `Announcer/announcer.js` | Executes the delivery plan: renders image card, posts to channel, sends member DMs, sends leader DM; marks each step in Archive after success; retries steps with flags still at 0 on the next Broker run |
+
+**Data flow:**
+
+```
+Refinery/Depot (threshold data, compiled products)
+     │
+     ▼
+Broker        ← cron tick fires / threshold event received → creates job
+     │
+     ▼
+Inspector     ← dedup? eligible? who receives? which variant?
+     │  accept / reject
+     ▼
+Archive       ← atomic claim → channel_sent=0, dm_member_sent=0, dm_leader_sent=0
+     │
+     ▼
+Announcer     ← render card → post channel → send N DMs → mark each flag in Archive
+     │
+     ▼
+Discord (channel posts, member DMs, leader DMs)
+```
+
+**On bot restart:** Broker reads Archive for any records with delivery flags still at 0
+(incomplete sends from before the restart). It skips Broker and Inspector for those records
+and routes them directly to Announcer to retry only the remaining steps. This is the exact
+pattern already implemented in `milestone/milestones.js` (`retrySends`).
+
+**May:**
+- Read from Refinery/Depot (computed products, threshold values)
+- Call Workshop/Fabricator to render image cards (Announcer requests renders)
+- Write to Archive (notification claims, delivery flags, history)
+- Send to Discord (channel posts, DMs)
+
+**Must not:**
+- Compute fan gains or business logic (that is Refinery's job)
+- Perform raw API fetches from uma.moe (that is Umamoe's job)
+- Respond to slash commands (that is Distribution's job)
+- Modify a delivered notification after it has been confirmed in Archive
+
+**Notification types handled by Broadcast:**
+
+| Notification | Trigger | Recipients |
+|---|---|---|
+| Daily greeting | 07:00 JST cron | Channel post + per-member DM in their local timezone |
+| Noon / night / midnight messages | Hourly cron, per-member timezone check | Member DM only |
+| Offline check | Daily cron, days-since-last-online check | Member DM (escalating 1/2/3+ day variants) |
+| Daily fan warning | 23:45 JST (after tally), fan goal missed | Channel post + all linked member DMs |
+| Daily achievement tier | Hourly, total fans crosses threshold | Channel post + all linked member DMs |
+| Weekly fan warning | End of week, weekly goal missed | Channel post + member DMs |
+| Monthly fan warning | End of month, monthly goal missed | Channel post + member DMs |
+| Milestone | Monthly, per-trainer fan count tier crossed | Channel post + trainer DM + leader DM |
+| Leaderboard announcement | Daily/weekly tally complete | Channel post + top-3 DMs |
+| Fan deficit image report | Daily tally check | Channel post |
+| Inter-circle leaderboard | Weekly | Channel post |
+
+**Current code that moves to Broadcast:**
+
+```
+  ─ Broker ─
+fantracking/milestone/milestones.js      → Broker (orchestration entry + boot guard)
+fantracking/achievements/daily.js        → Broker (cron trigger + achievement loop)
+tasks/dailyGreetingReport.js             → Broker (time check + channel greeting)
+tasks/dailyMessages.js                   → Broker (per-timezone hour check + DM loop)
+tasks/offlineCheck.js                    → Broker (days-offline trigger + DM)
+tasks/weeklyAnnouncement.js              → Broker (weekly tally event)
+tasks/interCircleAnnouncements.js        → Broker (inter-circle trigger)
+
+  ─ Inspector ─
+fantracking/milestone/eval.js            → Inspector (meetsThreshold eligibility)
+fantracking/milestone/tiers.js           → Inspector (tier config + variant pool)
+fantracking/milestone/winners.js         → Inspector (top-3 recipient resolution)
+fantracking/milestone/cleanup.js         → Inspector / Archive (pruning expired records)
+fantracking/warnings/engine.js           → Inspector (pace calc, level escalation, grace period)
+fantracking/warnings/daily.js            → Inspector (daily fan goal eligibility)
+fantracking/warnings/weekly.js           → Inspector (weekly goal eligibility)
+fantracking/warnings/monthly.js          → Inspector (monthly goal eligibility)
+
+  ─ Archive ─
+fantracking/milestone/db.js              → Archive (claim, channel_sent, dm_sent flags)
+fantracking/warnings/db.js               → Archive (warning_state, warning_history tables)
+fantracking/achievements/db.js           → Archive (achievement record persistence)
+
+  ─ Announcer ─
+  (send/delivery portions of the files below; render portions move to Workshop/Fabricator)
+fantracking/milestone/notifier.js        → Announcer (sendChannelAnnouncement, DM sends)
+fantracking/leaderboard/announcements.js → Announcer (channel post + top-3 DMs)
+fantracking/warnings/imageReport.js      → Announcer (deliver warning image report)
+tasks/fanDeficitImageReport.js           → Announcer (deliver fan deficit report)
+tasks/leaderboardAnnouncements.js        → Announcer (shim, updates target to Announcer)
+```
+
+---
+
+### 2.5 `Distribution/` — Command Response Routing
+
+**One sentence:** Retrieves approved deliverables from Workshop/Terminal and routes them
+to the correct Discord destination in response to a user slash command.
 
 **Departments (to be defined):**
 
@@ -252,35 +373,32 @@ correct Discord destination (channel post, DM, or slash command reply).
 | Retriever | Pulls approved deliverables from Workshop/Terminal |
 | Dispatcher | Routes the deliverable to the correct Discord channel, user DM, or command reply |
 
-**Currently handled by** (spread across multiple layers, to be consolidated):
+**Currently handled by** (to be consolidated into `Distribution/`):
 
 ```
 commands/*.js       → receive slash commands, request deliverable, send reply
 handlers/*.js       → handle Discord events, trigger and send deliverables
-tasks/index.js      → schedule automated deliveries (cron)
-tasks/dailyFanWarning.js, leaderboardAnnouncements.js, etc. → send to Discord
-utils/dm.js         → DM delivery wrapper (stays; used by Dispatcher)
+utils/dm.js         → DM delivery wrapper (stays; used by Dispatcher and Announcer)
 utils/updateLog.js  → log channel posting (stays; used by Dispatcher)
 utils/autoDelete.js → auto-delete ephemeral messages (stays; used by Dispatcher)
 ```
 
 > **Distribution is not yet a formal directory.** In the current codebase its role is
-> carried out by `commands/`, `handlers/`, and `tasks/`. Formalizing it into a
-> `Distribution/` directory is a later-stage task after Refinery and Workshop are stable.
+> carried out by `commands/` and `handlers/`. Formalizing it is a later-stage task after
+> Refinery, Workshop, and Broadcast are stable.
 
 ---
 
-### 2.5 `core/` / `db/` / `utils/` / `tasks/` — Shim and Support Layer
+### 2.6 `core/` / `db/` / `utils/` / `tasks/` — Shim and Support Layer
 
-These directories currently hold two kinds of files:
+These directories hold two kinds of files:
 
-**1. Shims** — thin re-export files that point to the real implementation in `umamoe/` or
-`fantracking/`. They exist so existing `import` paths keep working across the codebase
-without a mass-rewrite. Every shim contains only one line of substance:
-`export * from '../<real-location>';`
+**1. Shims** — thin re-export files that point to the real implementation. They exist so
+existing `import` paths in commands and handlers keep working without a mass-rewrite.
+Every shim contains only one line of substance: `export * from '../<real-location>';`
 
 **2. Genuine support utilities** — files that don't belong to any pipeline stage and are
-used across multiple stages. These stay in place permanently.
+used across multiple stages. These stay permanently.
 
 | File | Type | Stays or moves? |
 |---|---|---|
@@ -289,38 +407,39 @@ used across multiple stages. These stay in place permanently.
 | `core/store.js` | Support | Stays permanently |
 | `core/format.js` | Support | Stays permanently |
 | `core/errors.js` | Support | Stays permanently |
-| `core/channels.js` | Support | Stays permanently (used by Distribution) |
+| `core/channels.js` | Support | Stays permanently (used by Announcer + Dispatcher) |
 | `core/busyLock.js` | Support | Stays permanently |
 | `core/quotaKeys.js` | Support | Stays permanently |
 | `core/taskRegistry.js` | Support | Stays permanently |
 | `core/health.js` | Support | Stays permanently |
+| `core/tally.js` | Support | Stays permanently |
 | `core/uma.js` | Shim → `umamoe/uma.js` | Stays as shim |
 | `core/umaClient.js` | Shim → `umamoe/umaClient.js` | Stays as shim |
 | `core/umaCache.js` | Shim → `umamoe/umaCache.js` | Stays as shim |
 | `core/umaQueue.js` | Shim → `umamoe/umaQueue.js` | Stays as shim |
-| `core/umaStats.js` | Shim → `umamoe/umaStats.js` | Becomes shim → `Refinery/Refiner/` after move |
-| `core/milestoneEval.js` | Shim → `fantracking/milestone/eval.js` | Becomes shim → `Refinery/Refiner/` after move |
-| `core/milestoneImages.js` | Shim → `fantracking/milestone/images.js` | Stays (images stays in fantracking for now) |
-| `core/fanDeficitApi.js` | Shim → `fantracking/warnings/fanDeficitApi.js` | Becomes shim → `Workshop/Terminal/` after move |
-| `db/linksDb.js` | Shim → `fantracking/links/db.js` | Becomes shim → `Refinery/Depot/` after move |
-| `db/achievementDb.js` | Shim → `fantracking/achievements/db.js` | Becomes shim → `Refinery/Depot/` after move |
-| `db/milestoneDb.js` | Shim → `fantracking/milestone/db.js` | Becomes shim → `Refinery/Depot/` after move |
-| `db/warningDb.js` | Shim → `fantracking/warnings/db.js` | Becomes shim → `Refinery/Depot/` after move |
+| `core/umaStats.js` | Shim → `umamoe/umaStats.js` | Updates target → `Refinery/Refiner/` after move |
+| `core/milestoneEval.js` | Shim → `fantracking/milestone/eval.js` | Updates target → `Broadcast/Inspector/` after move |
+| `core/milestoneImages.js` | Shim → `fantracking/milestone/images.js` | Stays (images stays in fantracking) |
+| `core/fanDeficitApi.js` | Shim → `fantracking/warnings/fanDeficitApi.js` | Updates target → `Workshop/Terminal/` after move |
+| `db/linksDb.js` | Shim → `fantracking/links/db.js` | Updates target → `Refinery/Depot/` after move |
+| `db/achievementDb.js` | Shim → `fantracking/achievements/db.js` | Updates target → `Broadcast/Archive/` after move |
+| `db/milestoneDb.js` | Shim → `fantracking/milestone/db.js` | Updates target → `Broadcast/Archive/` after move |
+| `db/warningDb.js` | Shim → `fantracking/warnings/db.js` | Updates target → `Broadcast/Archive/` after move |
 | `db/attendanceDb.js` | Shim → `fantracking/attendance/db.js` | Stays (attendance is independent) |
-| `db/leaderboardSnapshotDb.js` | Shim → `fantracking/leaderboard/snapshotDb.js` | Becomes shim → `Refinery/Depot/` after move |
-| `utils/milestoneNotifier.js` | Shim → `fantracking/milestone/notifier.js` | Becomes shim → `Workshop/Fabricator/` after move |
-| `utils/reports/*.js` | Shims → `fantracking/reports/*.js` | Become shims → `Workshop/Fabricator/` after move |
+| `db/leaderboardSnapshotDb.js` | Shim → `fantracking/leaderboard/snapshotDb.js` | Updates target → `Refinery/Depot/` after move |
+| `utils/milestoneNotifier.js` | Shim → `fantracking/milestone/notifier.js` | Updates target → `Broadcast/Announcer/` after move |
+| `utils/reports/*.js` | Shims → `fantracking/reports/*.js` | Update target → `Workshop/Fabricator/reports/` after move |
 | `utils/pastHistoryReader.js` | Shim → `umamoe/history/` | Stays as shim |
 | `utils/generatePastHistoryMd.js` | Shim → `umamoe/history/` | Stays as shim |
 | `utils/profileBackfill.js` | Shim → `umamoe/profileBackfill.js` | Stays as shim |
 | `utils/resumeCard.js` | Shim → `umamoe/trainer/resumeCard.js` | Stays as shim |
 | `utils/skillScraper.js` | Shim → `umamoe/trainer/skillScraper.js` | Stays as shim |
-| `utils/dm.js` | Support | Stays permanently (Distribution uses it) |
+| `utils/dm.js` | Support | Stays permanently (Announcer + Dispatcher use it) |
 | `utils/updateLog.js` | Support | Stays permanently |
 | `utils/autoDelete.js` | Support | Stays permanently |
 | `utils/imageReport.js` | Support | Stays permanently (Playwright render engine) |
-| `tasks/*.js` shims | Shims → `fantracking/` | Update shim target after move |
-| `tasks/index.js` | Distribution scheduler | Stays (future: becomes Distribution entry) |
+| `tasks/*.js` shims | Shims → `fantracking/` or `Broadcast/` | Update shim target after move |
+| `tasks/index.js` | Distribution scheduler | Stays (entry point for all cron; calls into Broker) |
 
 ---
 
@@ -328,22 +447,24 @@ used across multiple stages. These stay in place permanently.
 
 These rules are absolute. If any code violates a boundary, the split has not been done correctly.
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  Umamoe    │ MAY NOT compute gains, render cards, or post to Discord │
-│  Refinery  │ MAY NOT fetch from uma.moe, render cards, or post to Discord │
-│  Workshop  │ MAY NOT fetch from uma.moe, compute derived values, or post to Discord │
-│  Distribution │ MAY NOT compute, render, or manufacture anything │
-└─────────────────────────────────────────────────────────────────┘
-```
+| Directory | May read from | May write to | May send to Discord |
+|---|---|---|---|
+| `Umamoe` | uma.moe API | Vault only | No |
+| `Refinery` | Vault (read-only) | Depot only | No |
+| `Workshop` | Depot (read-only) | Terminal only | No |
+| `Broadcast` | Depot (read-only), Archive | Archive | Yes — channel posts + DMs |
+| `Distribution` | Terminal (read-only) | None | Yes — command replies |
 
 **Data flows in one direction only:**
 
 ```
-Umamoe → Refinery → Workshop → Distribution → Discord
+Umamoe → Refinery → Depot → Workshop → Terminal → Distribution → Discord
+                          ↘
+                           Broadcast → Discord
 ```
 
 No directory may import from a directory downstream of itself.
+Workshop and Broadcast are parallel consumers of Depot — they never import each other.
 
 ---
 
@@ -351,37 +472,24 @@ No directory may import from a directory downstream of itself.
 
 ### 4.1 Files that move to `Refinery/`
 
-These files physically relocate. Their `import` paths inside them change.
-Existing shims in `core/`, `db/`, and `tasks/` update their target path.
-
 | Current path | Target path in Refinery | Department |
 |---|---|---|
 | `umamoe/umaStats.js` | `Refinery/Refiner/umaStats.js` | Refiner |
 | `fantracking/velocity/index.js` | `Refinery/Refiner/velocity.js` | Refiner |
 | `fantracking/achievements/daily.js` | `Refinery/Refiner/achievements.js` | Refiner |
 | `fantracking/milestone/eval.js` | `Refinery/Refiner/milestoneEval.js` | Refiner |
-| `fantracking/milestone/milestones.js` | `Refinery/Refiner/milestones.js` | Refiner |
-| `fantracking/milestone/tiers.js` | `Refinery/Refiner/milestoneTiers.js` | Refiner |
-| `fantracking/milestone/winners.js` | `Refinery/Refiner/milestoneWinners.js` | Refiner |
-| `fantracking/milestone/cleanup.js` | `Refinery/Refiner/milestoneCleanup.js` | Refiner |
-| `fantracking/warnings/engine.js` | `Refinery/Refiner/warningEngine.js` | Refiner |
-| `fantracking/warnings/daily.js` | `Refinery/Refiner/warningDaily.js` | Refiner |
-| `fantracking/warnings/weekly.js` | `Refinery/Refiner/warningWeekly.js` | Refiner |
-| `fantracking/warnings/monthly.js` | `Refinery/Refiner/warningMonthly.js` | Refiner |
-| `fantracking/leaderboard/interCircle.js` | `Refinery/Refiner/interCircle.js` | Refiner |
 | `fantracking/sync/dataSync.js` | `Refinery/Compiler/dataSync.js` | Compiler |
 | `fantracking/sync/circleQueue.js` | `Refinery/Compiler/circleQueue.js` | Compiler |
 | `fantracking/aggregation/index.js` | `Refinery/Compiler/aggregation.js` | Compiler |
 | `fantracking/leaderboard/snapshotDb.js` | `Refinery/Depot/leaderboardSnapshotDb.js` | Depot |
-| `fantracking/achievements/db.js` | `Refinery/Depot/achievementDb.js` | Depot |
-| `fantracking/milestone/db.js` | `Refinery/Depot/milestoneDb.js` | Depot |
-| `fantracking/warnings/db.js` | `Refinery/Depot/warningDb.js` | Depot |
 | `fantracking/links/db.js` | `Refinery/Depot/linksDb.js` | Depot |
 | `fantracking/links/repository.js` | `Refinery/Depot/linksRepository.js` | Depot |
 
 ---
 
 ### 4.2 Files that move to `Workshop/`
+
+**Full move — render-only files with no delivery logic:**
 
 | Current path | Target path in Workshop | Department |
 |---|---|---|
@@ -402,109 +510,146 @@ Existing shims in `core/`, `db/`, and `tasks/` update their target path.
 | `fantracking/reports/store.js` | `Workshop/Fabricator/reports/store.js` | Fabricator |
 | `fantracking/reports/timeline.js` | `Workshop/Fabricator/reports/timeline.js` | Fabricator |
 | `fantracking/reports/linkList.js` | `Workshop/Fabricator/reports/linkList.js` | Fabricator |
-| `fantracking/leaderboard/announcements.js` | `Workshop/Fabricator/leaderboardAnnouncements.js` | Fabricator |
-| `fantracking/milestone/notifier.js` | `Workshop/Fabricator/milestoneNotifier.js` | Fabricator |
-| `fantracking/warnings/imageReport.js` | `Workshop/Fabricator/warningImageReport.js` | Fabricator |
 | `fantracking/warnings/fanDeficitApi.js` | `Workshop/Terminal/fanDeficitApi.js` | Terminal |
+
+**Split move — render portion to Fabricator, delivery portion to Broadcast/Announcer:**
+
+| Current path | Render portion → Fabricator | Delivery portion → Broadcast/Announcer |
+|---|---|---|
+| `fantracking/leaderboard/announcements.js` | `Workshop/Fabricator/renders/leaderboard.js` | `Broadcast/Announcer/leaderboardAnnouncements.js` |
+| `fantracking/milestone/notifier.js` | `Workshop/Fabricator/renders/milestone.js` | `Broadcast/Announcer/milestoneAnnouncer.js` |
+| `fantracking/warnings/imageReport.js` | `Workshop/Fabricator/renders/warningReport.js` | `Broadcast/Announcer/warningAnnouncer.js` |
 
 ---
 
-### 4.3 Shims to create or update
+### 4.3 Files that move to `Broadcast/`
 
-After the physical moves above, every shim that currently points to `fantracking/`
-must be updated to point to the new location. No command, handler, or task import path changes.
+**Broker:**
+
+| Current path | Target path |
+|---|---|
+| `fantracking/milestone/milestones.js` | `Broadcast/Broker/milestoneBroker.js` |
+| `tasks/dailyGreetingReport.js` | `Broadcast/Broker/greetingBroker.js` |
+| `tasks/dailyMessages.js` | `Broadcast/Broker/dailyMessageBroker.js` |
+| `tasks/offlineCheck.js` | `Broadcast/Broker/offlineCheckBroker.js` |
+| `tasks/weeklyAnnouncement.js` | `Broadcast/Broker/weeklyAnnouncementBroker.js` |
+| `tasks/interCircleAnnouncements.js` | `Broadcast/Broker/interCircleBroker.js` |
+
+**Inspector:**
+
+| Current path | Target path |
+|---|---|
+| `fantracking/milestone/tiers.js` | `Broadcast/Inspector/milestoneTiers.js` |
+| `fantracking/milestone/winners.js` | `Broadcast/Inspector/milestoneWinners.js` |
+| `fantracking/milestone/cleanup.js` | `Broadcast/Inspector/milestoneCleanup.js` |
+| `fantracking/warnings/engine.js` | `Broadcast/Inspector/warningInspector.js` |
+| `fantracking/warnings/daily.js` | `Broadcast/Inspector/dailyWarningInspector.js` |
+| `fantracking/warnings/weekly.js` | `Broadcast/Inspector/weeklyWarningInspector.js` |
+| `fantracking/warnings/monthly.js` | `Broadcast/Inspector/monthlyWarningInspector.js` |
+
+> `fantracking/milestone/eval.js` moves to `Refinery/Refiner/milestoneEval.js` — the
+> eligibility *calculation* is Refinery work. Broadcast/Inspector calls the Refiner result;
+> it does not re-implement the calculation.
+
+**Archive:**
+
+| Current path | Target path |
+|---|---|
+| `fantracking/milestone/db.js` | `Broadcast/Archive/milestoneArchive.js` |
+| `fantracking/warnings/db.js` | `Broadcast/Archive/warningArchive.js` |
+| `fantracking/achievements/db.js` | `Broadcast/Archive/achievementArchive.js` |
+
+**Announcer (delivery portions only — see §4.2 for the render split):**
+
+| Source | Target path |
+|---|---|
+| Delivery portion of `fantracking/milestone/notifier.js` | `Broadcast/Announcer/milestoneAnnouncer.js` |
+| Delivery portion of `fantracking/leaderboard/announcements.js` | `Broadcast/Announcer/leaderboardAnnouncer.js` |
+| Delivery portion of `fantracking/warnings/imageReport.js` | `Broadcast/Announcer/warningAnnouncer.js` |
+| `tasks/fanDeficitImageReport.js` (delivery part) | `Broadcast/Announcer/fanDeficitAnnouncer.js` |
+
+---
+
+### 4.4 Shims to create or update
+
+After physical moves, every shim that currently points into `fantracking/` or `tasks/`
+updates its target. No command, handler, or task import path changes from the outside.
 
 **Shims in `core/` — update target:**
 
-| File | Current target | New target |
-|---|---|---|
-| `core/umaStats.js` | `umamoe/umaStats.js` | `Refinery/Refiner/umaStats.js` |
-| `core/milestoneEval.js` | `fantracking/milestone/eval.js` | `Refinery/Refiner/milestoneEval.js` |
-| `core/fanDeficitApi.js` | `fantracking/warnings/fanDeficitApi.js` | `Workshop/Terminal/fanDeficitApi.js` |
+| File | New target |
+|---|---|
+| `core/umaStats.js` | `Refinery/Refiner/umaStats.js` |
+| `core/milestoneEval.js` | `Refinery/Refiner/milestoneEval.js` |
+| `core/fanDeficitApi.js` | `Workshop/Terminal/fanDeficitApi.js` |
 
 **Shims in `db/` — update target:**
 
-| File | Current target | New target |
-|---|---|---|
-| `db/linksDb.js` | `fantracking/links/db.js` | `Refinery/Depot/linksDb.js` |
-| `db/achievementDb.js` | `fantracking/achievements/db.js` | `Refinery/Depot/achievementDb.js` |
-| `db/milestoneDb.js` | `fantracking/milestone/db.js` | `Refinery/Depot/milestoneDb.js` |
-| `db/warningDb.js` | `fantracking/warnings/db.js` | `Refinery/Depot/warningDb.js` |
-| `db/leaderboardSnapshotDb.js` | `fantracking/leaderboard/snapshotDb.js` | `Refinery/Depot/leaderboardSnapshotDb.js` |
+| File | New target |
+|---|---|
+| `db/linksDb.js` | `Refinery/Depot/linksDb.js` |
+| `db/leaderboardSnapshotDb.js` | `Refinery/Depot/leaderboardSnapshotDb.js` |
+| `db/achievementDb.js` | `Broadcast/Archive/achievementArchive.js` |
+| `db/milestoneDb.js` | `Broadcast/Archive/milestoneArchive.js` |
+| `db/warningDb.js` | `Broadcast/Archive/warningArchive.js` |
 
 **Shims in `tasks/` — update target:**
 
-| File | Current target | New target |
-|---|---|---|
-| `tasks/dataSync.js` | `fantracking/sync/dataSync.js` | `Refinery/Compiler/dataSync.js` |
-| `tasks/warningEngine.js` | `fantracking/warnings/engine.js` | `Refinery/Refiner/warningEngine.js` |
-| `tasks/dailyFanWarning.js` | `fantracking/warnings/daily.js` | `Refinery/Refiner/warningDaily.js` |
-| `tasks/monthlyWarning.js` | `fantracking/warnings/monthly.js` | `Refinery/Refiner/warningMonthly.js` |
-| `tasks/weeklyWarning.js` | `fantracking/warnings/weekly.js` | `Refinery/Refiner/warningWeekly.js` |
-| `tasks/milestones.js` | `fantracking/milestone/milestones.js` | `Refinery/Refiner/milestones.js` |
-| `tasks/milestone-tiers.js` | `fantracking/milestone/tiers.js` | `Refinery/Refiner/milestoneTiers.js` |
-| `tasks/milestoneCleanup.js` | `fantracking/milestone/cleanup.js` | `Refinery/Refiner/milestoneCleanup.js` |
-| `tasks/milestoneWinners.js` | `fantracking/milestone/winners.js` | `Refinery/Refiner/milestoneWinners.js` |
-| `tasks/dailyAchievement.js` | `fantracking/achievements/daily.js` | `Refinery/Refiner/achievements.js` |
-| `tasks/leaderboardAnnouncements.js` | `fantracking/leaderboard/announcements.js` | `Workshop/Fabricator/leaderboardAnnouncements.js` |
-| `tasks/interCircleAnnouncements.js` | `fantracking/leaderboard/interCircle.js` | `Refinery/Refiner/interCircle.js` |
-| `tasks/fanDeficitImageReport.js` | `fantracking/warnings/imageReport.js` | `Workshop/Fabricator/warningImageReport.js` |
+| File | New target |
+|---|---|
+| `tasks/dataSync.js` | `Refinery/Compiler/dataSync.js` |
+| `tasks/warningEngine.js` | `Broadcast/Inspector/warningInspector.js` |
+| `tasks/dailyFanWarning.js` | `Broadcast/Inspector/dailyWarningInspector.js` |
+| `tasks/monthlyWarning.js` | `Broadcast/Inspector/monthlyWarningInspector.js` |
+| `tasks/weeklyWarning.js` | `Broadcast/Inspector/weeklyWarningInspector.js` |
+| `tasks/milestones.js` | `Broadcast/Broker/milestoneBroker.js` |
+| `tasks/milestone-tiers.js` | `Broadcast/Inspector/milestoneTiers.js` |
+| `tasks/milestoneCleanup.js` | `Broadcast/Inspector/milestoneCleanup.js` |
+| `tasks/milestoneWinners.js` | `Broadcast/Inspector/milestoneWinners.js` |
+| `tasks/dailyAchievement.js` | `Broadcast/Broker/achievementBroker.js` |
+| `tasks/leaderboardAnnouncements.js` | `Broadcast/Announcer/leaderboardAnnouncer.js` |
+| `tasks/interCircleAnnouncements.js` | `Broadcast/Broker/interCircleBroker.js` |
+| `tasks/fanDeficitImageReport.js` | `Broadcast/Announcer/fanDeficitAnnouncer.js` |
+| `tasks/weeklyAnnouncement.js` | `Broadcast/Broker/weeklyAnnouncementBroker.js` |
 
 **Shims in `utils/reports/` — update target:**
+All 16 files update re-export target from `fantracking/reports/<file>` → `Workshop/Fabricator/reports/<file>`.
 
-All 16 files in `utils/reports/` update their re-export target from
-`fantracking/reports/<file>` to `Workshop/Fabricator/reports/<file>`.
-
-**New shim to create in `utils/`:**
+**Shim to create in `utils/`:**
 
 | New shim | Points to |
 |---|---|
-| `utils/milestoneNotifier.js` | `Workshop/Fabricator/milestoneNotifier.js` |
+| `utils/milestoneNotifier.js` | `Broadcast/Announcer/milestoneAnnouncer.js` |
 
 ---
 
-### 4.4 New files to create
+### 4.5 New files to create
 
-**Refinery spec docs (documentation only, no code):**
-
-```
-Refinery/README.md                        ← already in reference ✅
-Refinery/Overview.md                      ← already in reference ✅
-Refinery/Refiner/Refiner.md               ← already in reference ✅
-Refinery/Compiler/Compiler.md             ← already in reference ✅
-Refinery/Depot/Depot.md                   ← already in reference ✅
-```
-
-**Refinery implementation files (to implement):**
+**Broadcast spec docs:**
 
 ```
-Refinery/Refiner/refiner.js               ← orchestrates Refiner department (drafted in reference)
-Refinery/Compiler/compiler.js             ← assembles compiled products (drafted in reference)
-Refinery/Depot/depot.js                   ← Depot interface (drafted in reference)
-Refinery/Depot/adapters/sqlite.js         ← SQLite persistence for compiled products
-Refinery/Depot/adapters/inmemory.js       ← in-memory adapter for tests
-Refinery/tests/refiner.test.js            ← already in reference ✅
-Refinery/tests/vault.test.js              ← already in reference ✅
+Broadcast/README.md
+Broadcast/Overview.md
+Broadcast/Broker/Broker.md
+Broadcast/Inspector/Inspector.md
+Broadcast/Archive/Archive.md
+Broadcast/Announcer/Announcer.md
 ```
 
-**Workshop spec docs (from reference, already defined):**
+**Broadcast implementation files:**
 
 ```
-Workshop/Workshop.md                      ← already in reference ✅
-Workshop/README.md                        ← already in reference ✅
-Workshop/Draftsman/Draftsman.md           ← already in reference ✅
-Workshop/Draftsman/Blueprint/blueprint.md ← already in reference ✅
-Workshop/Draftsman/Blueprint/fan_gain.md  ← already in reference ✅
-Workshop/Draftsman/Blueprint/profile.md   ← already in reference ✅
-Workshop/Draftsman/Blueprint/circle.md    ← already in reference ✅
-Workshop/Draftsman/Blueprint/set_fans.md  ← already in reference ✅
-Workshop/Draftsman/Blueprint/link.md      ← already in reference ✅
-Workshop/Fabricator/Fabricator.md         ← already in reference ✅
-Workshop/Terminal/Terminal.md             ← already in reference ✅
-Workshop/Validator/Validator.md           ← already in reference ✅
+Broadcast/Broker/broker.js           ← orchestrator entry point
+Broadcast/Inspector/inspector.js     ← eligibility + dedup + recipient resolution
+Broadcast/Archive/archive.js         ← claim + flags + history interface
+Broadcast/Announcer/announcer.js     ← delivery orchestrator
 ```
 
-**Workshop blueprint docs (to create — one per command deliverable):**
+**Refinery spec docs (already in repo):** ✅
+
+**Workshop spec docs (already in repo):** ✅
+
+**Workshop blueprint docs to create (one per command):**
 
 ```
 Workshop/Draftsman/Blueprint/leaderboard.md
@@ -519,21 +664,9 @@ Workshop/Draftsman/Blueprint/store.md
 Workshop/Draftsman/Blueprint/timeline.md
 ```
 
-**Workshop implementation files (to implement):**
-
-```
-Workshop/Draftsman/draftsman.js           ← already in reference ✅
-Workshop/Draftsman/Blueprint/blueprints.js ← already in reference ✅
-Workshop/Fabricator/fabricator.js         ← already in reference ✅
-Workshop/Validator/validator.js           ← to implement
-Workshop/Terminal/terminal.js             ← already in reference ✅
-```
-
 ---
 
-### 4.5 Files that do not change
-
-These files are unaffected by the split. No path changes, no content changes.
+### 4.6 Files that do not change
 
 **Umamoe (all stay):**
 ```
@@ -547,16 +680,15 @@ umamoe/Miner/*, umamoe/Courier/*, umamoe/Inspector/*, umamoe/Vault/*
 ```
 core/config.js, core/log.js, core/store.js, core/format.js
 core/errors.js, core/channels.js, core/busyLock.js
-core/quotaKeys.js, core/taskRegistry.js, core/health.js
-core/tally.js, core/tokenLoader.js
+core/quotaKeys.js, core/taskRegistry.js, core/health.js, core/tally.js
 ```
 
-**Core shims for Umamoe (no change to target):**
+**Core shims for Umamoe (target unchanged):**
 ```
 core/uma.js, core/umaClient.js, core/umaCache.js, core/umaQueue.js
 ```
 
-**DB layer (stays or updates target only, no logic change):**
+**DB layer (logic unchanged; some shim targets update):**
 ```
 db/migrations.js, db/storeDb.js, db/trainerColorDb.js
 db/trainerDb.js, db/onboardingDb.js, db/attendanceDb.js
@@ -572,7 +704,7 @@ utils/activityLog.js, utils/changelog.js, utils/characterData.js
 utils/cardCache.js
 ```
 
-**Utils shims for Umamoe (no change to target):**
+**Utils shims for Umamoe (target unchanged):**
 ```
 utils/pastHistoryReader.js, utils/generatePastHistoryMd.js
 utils/profileBackfill.js, utils/resumeCard.js, utils/skillScraper.js
@@ -585,21 +717,36 @@ handlers/*.js   (all event handlers)
 onboarding/*.js
 ```
 
-**Tasks that stay as-is (not shims, not moved):**
+**Tasks that are scheduler entry points only — stay as shims pointing to Broadcast:**
 ```
-tasks/attendanceCheck.js, tasks/chatArchiver.js, tasks/dailyGreetingReport.js
-tasks/historicalSync.js, tasks/imageArchive.js, tasks/memberArchive.js
-tasks/messageCleanup.js, tasks/monthlyHistoryExport.js, tasks/nameLinker.js
-tasks/offlineCheck.js, tasks/onboardingReminder.js, tasks/purgeAnnouncement.js
-tasks/sqliteBackup.js, tasks/stadiumSync.js, tasks/startupMigrations.js
-tasks/tallyResults.js, tasks/timezoneNotice.js, tasks/updateGameData.js
-tasks/weeklyAnnouncement.js, tasks/index.js
+tasks/index.js              (cron scheduler — calls into Broker; stays as entry point)
+tasks/dataSync.js           (shim → Refinery/Compiler)
+tasks/historicalSync.js     (self-contained; stays)
+tasks/attendanceCheck.js    (self-contained subsystem; stays)
+tasks/chatArchiver.js       (stays)
+tasks/imageArchive.js       (stays)
+tasks/memberArchive.js      (stays)
+tasks/messageCleanup.js     (stays)
+tasks/monthlyHistoryExport.js (stays)
+tasks/nameLinker.js         (stays)
+tasks/onboardingReminder.js (stays)
+tasks/purgeAnnouncement.js  (stays)
+tasks/sqliteBackup.js       (stays)
+tasks/stadiumSync.js        (stays)
+tasks/startupMigrations.js  (stays)
+tasks/tallyResults.js       (stays)
+tasks/timezoneNotice.js     (stays)
+tasks/updateGameData.js     (stays)
+tasks/autoBackfill.js       (stays)
+tasks/autoImportCsv.js      (stays)
+tasks/purgeUmaStore.js      (stays)
 ```
 
-**fantracking/ files that stay in fantracking for now (independent subsystems):**
+**fantracking/ files that stay (independent subsystems):**
 ```
 fantracking/attendance/check.js   (attendance tracking — not fan-gain domain)
 fantracking/attendance/db.js
+fantracking/milestone/images.js   (image pool loader — stays; referenced by Announcer)
 ```
 
 ---
@@ -607,22 +754,31 @@ fantracking/attendance/db.js
 ## 5. Implementation Order
 
 Each task is isolated. The bot must remain fully operational after every step.
+Steps 19–24 are pure file moves + shim updates — zero logic changes, zero risk.
 
 | Task | Action | Risk |
 |---|---|---|
-| **19** | Copy Refinery and Workshop spec docs from reference into repo | None — docs only |
+| **19** | Copy Broadcast spec docs into repo | None — docs only |
 | **20** | Move Refinery/Refiner files; update shims in `core/`, `tasks/` | Low — shim pattern proven |
 | **21** | Move Refinery/Compiler files; update shims in `tasks/` | Low |
 | **22** | Move Refinery/Depot files; update shims in `db/` | Low |
-| **23** | Move Workshop/Fabricator files; update shims in `utils/reports/`, `tasks/` | Low |
+| **23** | Move Workshop/Fabricator report files; update shims in `utils/reports/` | Low |
 | **24** | Move Workshop/Terminal file; update shim in `core/` | Low |
-| **25** | Implement `Refinery/Refiner/refiner.js` orchestrator | Medium |
-| **26** | Implement `Refinery/Compiler/compiler.js` orchestrator | Medium |
-| **27** | Implement `Refinery/Depot/depot.js` + SQLite adapter | Medium |
-| **28** | Implement `Workshop/Validator/validator.js` | Medium |
-| **29** | Wire `fantracking/sync/dataSync.js` to use Refinery pipeline | High — core sync path |
-| **30** | Define remaining Workshop blueprints (one per command) | None — docs only |
-| **31** | Formalize `Distribution/` directory | Medium |
+| **25** | Move Broadcast/Inspector files; update shims in `tasks/` | Low |
+| **26** | Move Broadcast/Archive files; update shims in `db/` | Low |
+| **27** | Split render/delivery in `milestone/notifier.js`, `leaderboard/announcements.js`, `warnings/imageReport.js`; move render → Fabricator, delivery → Announcer | Medium — careful split required |
+| **28** | Move Broadcast/Broker files (orchestrators); update shims in `tasks/` | Low |
+| **29** | Implement `Refinery/Refiner/refiner.js` orchestrator | Medium |
+| **30** | Implement `Refinery/Compiler/compiler.js` orchestrator | Medium |
+| **31** | Implement `Refinery/Depot/depot.js` + SQLite adapter | Medium |
+| **32** | Implement `Broadcast/Archive/archive.js` unified interface | Medium |
+| **33** | Implement `Broadcast/Inspector/inspector.js` unified eligibility interface | Medium |
+| **34** | Implement `Broadcast/Broker/broker.js` unified entry point | Medium |
+| **35** | Implement `Broadcast/Announcer/announcer.js` unified delivery interface | Medium |
+| **36** | Implement `Workshop/Validator/validator.js` | Medium |
+| **37** | Wire `fantracking/sync/dataSync.js` to use Refinery pipeline end-to-end | High — core sync path |
+| **38** | Define remaining Workshop blueprints (one per command) | None — docs only |
+| **39** | Formalize `Distribution/` directory | Medium |
 
-After task 24, `fantracking/` becomes empty or contains only `fantracking/attendance/`.
-It can be retired at that point.
+After task 28, `fantracking/` retains only `attendance/` and `milestone/images.js`.
+It can be formally retired after those two are relocated or confirmed as standalone.
