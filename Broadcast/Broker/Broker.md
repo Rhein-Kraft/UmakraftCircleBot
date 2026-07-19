@@ -2,106 +2,120 @@
 
 ## Purpose
 
-The **Broker** is the entry point for the Broadcast pipeline.
+The **Broker** is the entry point and data courier of the Broadcast pipeline.
 
-It receives notification triggers — a cron tick from `tasks/index.js` or a threshold
-event surfaced by Refinery — creates a structured notification job envelope, and hands
-that envelope to Inspector for validation.
+When triggered by a cron schedule or a threshold event, Broker fetches the relevant
+compiled data from `Refinery/Depot` and hands it to Inspector as raw input for
+evaluation. Broker does not decide whether a notification should fire — that is
+Inspector's job.
 
-Broker also manages the per-circle notification queue, runs the boot-time silent-claim
-guard, and routes incomplete Archive records back to Announcer on restart.
+On bot restart, Broker also reads Archive for incomplete delivery records and routes
+those directly to Announcer, bypassing Inspector entirely.
 
 ---
 
 ## Responsibilities
 
-1. Receive cron triggers and data threshold events.
-2. Create a notification job envelope with the notification type, circle ID, source data
-   reference, and timestamp.
-3. Manage the per-circle queue — run circles sequentially so one failing circle never
-   blocks another.
-4. On the first cron tick after bot restart, run the boot-time silent-claim guard:
-   claim all qualifying notifications into Archive without sending any messages. From
-   the second tick onward, only genuinely new records trigger sends.
-5. On every cron tick, read Archive for records with any delivery flag still at 0 and
-   route them directly to Announcer (skip Inspector — the notification is already claimed).
-6. Pass new qualifying jobs to Inspector.
+1. Receive the cron trigger or threshold event for a specific notification type and circle.
+2. Fetch the relevant compiled product(s) from `Refinery/Depot` for that circle and period.
+3. Build the raw notification input envelope from the fetched data.
+4. Pass the raw input to Inspector.
+5. On restart: read Archive for records with any delivery flag still at 0 and route them
+   to Announcer (skip Inspector — those were already approved before the restart).
+6. Manage the per-circle queue so one failing circle never blocks another.
 
-Broker does not evaluate eligibility, select variants, write to Archive, or send to Discord.
+Broker does not evaluate eligibility, resolve recipients, select variants, write to
+Archive, or send to Discord.
 
 ---
 
-## Notification Job Envelope
+## What Broker Fetches from Refinery
 
-The envelope Broker creates and hands to Inspector:
+Broker knows what type of data each notification type needs and fetches exactly that
+from `Refinery/Depot`:
+
+| Notification type | What Broker fetches from Depot |
+|---|---|
+| Daily warning | Circle daily fan total for today |
+| Achievement tier | Circle hourly fan total + tier thresholds |
+| Milestone | Per-trainer monthly fan total + tier config |
+| Leaderboard | Compiled leaderboard snapshot for today/week |
+| Greeting | Member roster with linked status + timezones |
+| Offline check | Member last-seen timestamps |
+| Weekly / monthly warning | Circle period totals for the relevant window |
+| Inter-circle | Multi-circle compiled snapshot |
+
+---
+
+## Raw Input Envelope
+
+The envelope Broker builds and hands to Inspector:
 
 ```json
 {
-  "type": "milestone | dailyWarning | achievement | greeting | offline | ...",
+  "type": "dailyWarning",
   "circleId": "circle-001",
-  "sourceRef": {
-    "depotId": "compiled-product-id",
-    "snapshotDate": "2026-07-19"
-  },
-  "triggeredAt": "2026-07-19T07:00:00.000Z",
-  "meta": {}
+  "fetchedAt": "2026-07-19T23:45:00.000Z",
+  "data": {
+    "fanTotal": 842000,
+    "memberStats": [ ... ],
+    "snapshotDate": "2026-07-19",
+    "depotRef": "depot-product-id-xyz"
+  }
 }
 ```
 
-`sourceRef.depotId` points to the compiled product in `Refinery/Depot` that this
-notification is based on. Inspector fetches the product from Depot using this reference.
+`data` contains exactly what was fetched from Refinery/Depot — no derived values,
+no eligibility conclusions, no recipient lists. That computation belongs to Inspector.
 
 ---
 
-## Boot-Time Silent-Claim Guard
+## Restart Recovery
 
-On restart, there is a risk of a spam burst: the bot missed several cron ticks while
-offline, and on its first tick it fires every notification that would have qualified
-during the downtime.
-
-The guard prevents this:
-
-```text
-First tick after restart:
-  → claim all qualifying notifications into Archive (INSERT OR IGNORE)
-  → do NOT pass any to Announcer
-  → mark the circle as "booted"
-
-Second tick onward:
-  → only records claimed AFTER the boot tick are new → proceed normally
-```
-
-This pattern is already proven in production by `fantracking/milestone/milestones.js`.
-
----
-
-## Restart Recovery Flow
-
-On every cron tick, before processing new jobs:
+On every startup and before each cron tick, Broker reads Archive for incomplete records:
 
 ```text
 Archive.getIncomplete(circleId)
-  → returns records where channel_sent=0 OR dm_member_sent=0 OR dm_leader_sent=0
-  → route each directly to Announcer
-  → Announcer retries only the steps with flag = 0
+  → records where channel_sent=0 OR dm_member_sent=0 OR dm_leader_sent=0
+
+For each incomplete record:
+  → route notificationKey directly to Announcer
+  → skip Inspector (notification was already approved before restart)
 ```
 
-Inspector is not re-run for recovery records. The notification was already validated
-and claimed — only delivery is retried.
+This ensures deliveries that were interrupted by a crash or restart are completed
+without re-evaluating eligibility or creating duplicate Archive records.
+
+---
+
+## Per-Circle Queue
+
+Broker runs notification jobs for each configured circle sequentially and in isolation:
+
+```text
+for each circle in getConfiguredCircles():
+  try:
+    data = Depot.fetch(type, circleId)
+    Inspector.evaluate({ type, circleId, data })
+  catch error:
+    log error, continue to next circle
+```
+
+One failing circle never blocks others.
 
 ---
 
 ## Interface
 
 ```javascript
-// Register a cron-triggered notification type
-broker.register(type, options)
+// Called by tasks/index.js on cron tick
+await broker.run(type, client)
 
-// Trigger a notification job manually (e.g. from a data event)
-await broker.trigger({ type, circleId, sourceRef, meta })
+// Internal: fetch data from Refinery/Depot for a given type + circle
+await broker._fetch(type, circleId)
 
-// Run the full broker cycle for all configured circles (called by tasks/index.js)
-await broker.run(client)
+// Internal: on startup, find and recover incomplete Archive records
+await broker._recoverIncomplete(circleId, client)
 ```
 
 ---
@@ -109,48 +123,50 @@ await broker.run(client)
 ## Workflow
 
 ```text
-tasks/index.js (cron schedule)
+tasks/index.js (cron schedule fires)
      │
      ▼
-Broker.run(client)
+Broker.run(type, client)
      │
-     ├── read Archive for incomplete records → Announcer (retry)
+     ├── broker._recoverIncomplete()
+     │     → Archive.getIncomplete(circleId)
+     │     → Announcer.deliver(notificationKey, client)   [retry only]
      │
      └── for each circle:
-           │
-           ├── boot guard (first tick after restart)?
-           │     → claim silently, skip Announcer
-           │
-           └── create job envelope → Inspector
+           → Depot.fetch(type, circleId) → raw data
+           → Inspector.evaluate({ type, circleId, data })
 ```
 
 ---
 
 ## Design Principle
 
-Broker is a coordinator, not a processor.
+Broker is a courier, not a judge.
 
-It knows *when* to fire and *which circle* to process. It does not know whether a
-notification qualifies, who should receive it, or what the message should say.
-Those responsibilities belong to Inspector and Announcer respectively.
+It knows when to run and what data to fetch. It does not know whether the data
+qualifies as a notification event — that is Inspector's job. This separation means
+Broker can be tested with mock Depot data regardless of any eligibility logic, and
+eligibility rules can be changed in Inspector without touching Broker.
 
 ---
 
 ## Current Source Files
 
-These files contain the logic that will be consolidated into Broker:
+Logic extracted into Broker from these files:
 
-| Current file | Broker responsibility extracted |
+| Current file | Broker responsibility |
 |---|---|
-| `fantracking/milestone/milestones.js` | Boot guard, per-circle queue, restart recovery |
-| `tasks/dailyGreetingReport.js` | Time check, channel greeting trigger |
-| `tasks/dailyMessages.js` | Per-timezone hour check, DM loop trigger |
-| `tasks/offlineCheck.js` | Days-offline threshold trigger |
-| `tasks/weeklyAnnouncement.js` | Weekly tally event trigger |
-| `tasks/interCircleAnnouncements.js` | Inter-circle comparison trigger |
+| `fantracking/milestone/milestones.js` | Per-circle queue, restart recovery, boot-time guard |
+| `tasks/dailyGreetingReport.js` | Cron trigger, member roster fetch |
+| `tasks/dailyMessages.js` | Per-timezone hour check, member fetch |
+| `tasks/offlineCheck.js` | Days-offline threshold, last-seen fetch |
+| `tasks/weeklyAnnouncement.js` | Weekly tally event, snapshot fetch |
+| `tasks/interCircleAnnouncements.js` | Multi-circle snapshot fetch |
 
 ---
 
 ## Version History
 
 - `v1.0` — Initial Broker specification
+- `v1.1` — Clarified Broker as data courier only; data fetch from Refinery is primary
+  responsibility; eligibility decisions belong entirely to Inspector

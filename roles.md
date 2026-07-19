@@ -249,9 +249,10 @@ Workshop/Validator/validator.js             ← to implement
 
 ### 2.4 `Broadcast/` — Event Notification Pipeline
 
-**One sentence:** Detects qualifying notification events from Refinery data, validates
-eligibility, claims each notification atomically in the database, renders and delivers
-the message to Discord with per-step dedup and restart-safe retry.
+**One sentence:** Broker fetches raw data from Refinery and hands it to Inspector;
+Inspector validates eligibility and — if approved — writes the full notification record
+to Archive; Announcer reads from Archive and delivers to Discord with per-step
+dedup and restart-safe retry.
 
 **Why Broadcast is separate from Workshop:** Workshop is a pull model — it manufactures a
 deliverable in response to a user command. Broadcast is a push model — it fires automatically
@@ -264,42 +265,50 @@ every department's single-responsibility rule.
 
 | Department | File | Responsibility |
 |---|---|---|
-| Broker | `Broker/broker.js` | Receives the cron trigger or threshold event; creates a notification job envelope; manages the per-circle queue; runs the boot-time silent-claim guard to prevent spam on restart |
-| Inspector | `Inspector/inspector.js` | Validates eligibility (threshold met, grace period, tally cutoff); checks dedup (has this notification already fired today/this month?); resolves recipients (channels, member DMs, leader DM); selects message variant from the pool |
-| Archive | `Archive/archive.js` | Atomically claims each notification before any message is sent; tracks per-step delivery flags (`channel_sent`, `dm_member_sent`, `dm_leader_sent`); maintains append-only history log; surfaces incomplete records for Announcer retry |
-| Announcer | `Announcer/announcer.js` | Executes the delivery plan: renders image card, posts to channel, sends member DMs, sends leader DM; marks each step in Archive after success; retries steps with flags still at 0 on the next Broker run |
+| Broker | `Broker/broker.js` | Triggered by cron or threshold event; **fetches raw compiled data from Refinery/Depot** and hands it to Inspector as raw input; manages per-circle queue; on restart reads Archive for incomplete records and routes them to Announcer |
+| Inspector | `Inspector/inspector.js` | Receives raw data from Broker; runs eligibility check, dedup check, recipient resolution, and variant selection; **if approved: writes the full notification record to Archive** (sole writer); signals Announcer with the `notificationKey`; if rejected: drops cleanly, nothing written |
+| Archive | `Archive/archive.js` | **Pure storage.** Holds notification records and delivery state. Written by Inspector (new records) and Announcer (flag updates + history). Read by Announcer (delivery plan) and Broker (incomplete records on restart). Contains no pipeline logic. |
+| Announcer | `Announcer/announcer.js` | **Reads the full notification record from Archive** by `notificationKey`; renders image card via Workshop/Fabricator; posts to channel; sends member DMs; sends leader DM; updates each delivery flag in Archive on success; on failure leaves flag at 0 for next Broker retry run |
 
 **Data flow:**
 
 ```
-Refinery/Depot (threshold data, compiled products)
-     │
+Refinery/Depot
+     │  ← Broker fetches raw compiled data
      ▼
-Broker        ← cron tick fires / threshold event received → creates job
-     │
+  Broker       triggered by cron / threshold event
+     │  raw data envelope
      ▼
-Inspector     ← dedup? eligible? who receives? which variant?
-     │  accept / reject
+  Inspector    eligibility · dedup · recipients · variant
+     │  reject → drop (nothing written)
+     │  approve ↓
      ▼
-Archive       ← atomic claim → channel_sent=0, dm_member_sent=0, dm_leader_sent=0
-     │
+  Archive      pure storage — Inspector writes; Announcer reads + updates flags
+     │  ← Announcer reads notificationKey
      ▼
-Announcer     ← render card → post channel → send N DMs → mark each flag in Archive
+  Announcer    render card → post channel → send DMs → update Archive flags
      │
      ▼
 Discord (channel posts, member DMs, leader DMs)
+
+  ── restart recovery ──
+  Broker reads Archive.getIncomplete() → Announcer (skip Inspector)
 ```
 
-**On bot restart:** Broker reads Archive for any records with delivery flags still at 0
-(incomplete sends from before the restart). It skips Broker and Inspector for those records
-and routes them directly to Announcer to retry only the remaining steps. This is the exact
-pattern already implemented in `milestone/milestones.js` (`retrySends`).
+**Writer / reader contract for Archive:**
+
+| Operation | Caller |
+|---|---|
+| `INSERT` new record | Inspector only |
+| `UPDATE` delivery flags | Announcer only |
+| `INSERT` history row | Announcer only |
+| `SELECT` incomplete records | Broker only (restart recovery) |
+| `SELECT` record by key | Announcer only |
 
 **May:**
-- Read from Refinery/Depot (computed products, threshold values)
-- Call Workshop/Fabricator to render image cards (Announcer requests renders)
-- Write to Archive (notification claims, delivery flags, history)
-- Send to Discord (channel posts, DMs)
+- Broker: read from Refinery/Depot (data fetch only)
+- Inspector: write to Archive (new records only)
+- Announcer: call Workshop/Fabricator for renders; send to Discord; update Archive flags
 
 **Must not:**
 - Compute fan gains or business logic (that is Refinery's job)

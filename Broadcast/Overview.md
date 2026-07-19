@@ -15,9 +15,9 @@ Broadcast is a sibling of Workshop, not an extension of it. Both consume data fr
 |---|---|---|
 | **Trigger** | User runs a slash command | Cron fires or data threshold crossed |
 | **Recipients** | One (the requester) | Many (channel + N member DMs + leader DM) |
-| **Dedup** | Not needed | Critical — survives bot restarts via Archive |
-| **State** | Stateless | Stateful — claim → send channel → send DMs → confirm |
-| **Retry** | Discord handles | Manual per-step retry via Archive flags |
+| **Dedup** | Not needed | Critical — Archive prevents double-fires across restarts |
+| **State** | Stateless | Stateful — Inspector claims in Archive; Announcer marks each step |
+| **Retry** | Discord handles | Announcer retries flagged steps found by Broker on restart |
 
 ---
 
@@ -25,22 +25,27 @@ Broadcast is a sibling of Workshop, not an extension of it. Both consume data fr
 
 ```text
 Refinery/Depot
-     │  (threshold data, compiled products)
-     ▼
-  Broker       ← receives trigger, creates notification job envelope
      │
+     ▼  ← Broker fetches raw computed data
+  Broker
+     │  ← passes raw data to Inspector
      ▼
-  Inspector    ← eligibility check, dedup check, recipient resolution, variant selection
-     │  accept → proceed / reject → drop
+  Inspector
+     │  ← if approved: writes full notification record to Archive
+     │  ← if rejected: drops cleanly, nothing written
      ▼
-  Archive      ← atomic claim; sets channel_sent=0, dm_member_sent=0, dm_leader_sent=0
-     │
+  Archive  (pure storage)
+     │  ← Announcer reads the notification record
      ▼
-  Announcer    ← render card → post channel → send DMs → update Archive flags per step
-     │
+  Announcer
+     │  ← render card → post channel → send DMs → update Archive flags
      ▼
-Discord (channel posts, member DMs, leader DMs)
+  Discord (channel posts, member DMs, leader DMs)
 ```
+
+On bot restart, Broker reads Archive for records with any delivery flag still at 0
+and routes those directly to Announcer — skipping Inspector entirely, since those
+notifications were already approved and claimed before the restart.
 
 ---
 
@@ -48,102 +53,90 @@ Discord (channel posts, member DMs, leader DMs)
 
 ### Broker
 
-The entry point for the Broadcast pipeline. Broker receives a trigger (cron tick or
-threshold event from Refinery), creates a structured notification job envelope, and
-manages the per-circle notification queue so one failing circle never blocks another.
+The entry point of the Broadcast pipeline. Broker is triggered by a cron schedule
+or data threshold event. When triggered, it fetches the relevant compiled data from
+`Refinery/Depot` and hands it to Inspector as raw input.
 
-Broker also runs the **boot-time silent-claim guard**: on the first cron tick after
-a bot restart, qualifying notifications are claimed into Archive but no messages are
-sent. This prevents a spam burst on fresh deploy or container reset.
+Broker does not decide whether a notification should fire — that is Inspector's job.
+It only knows **when** to run and **what data to fetch**.
 
-On restart, Broker reads Archive for any records with delivery flags still at 0 and
-routes them directly to Announcer — skipping Inspector entirely, since the notification
-was already validated and claimed before the restart.
+On restart, Broker also reads Archive for incomplete delivery records (any flag = 0)
+and routes those directly to Announcer for retry — bypassing Inspector since those
+notifications were already approved.
 
 ### Inspector
 
-The gatekeeper. No notification reaches Archive or Announcer without passing Inspector.
+The decision-maker and the sole creator of Archive records.
 
-Inspector runs every check in order:
+Inspector receives raw Refinery data from Broker and runs every check in order:
 
-1. **Eligibility check** — does the data meet the threshold? Is the grace period over?
-   Is the tally window still open? (Reads pre-computed values from Refinery/Depot —
-   does not re-implement business logic.)
-2. **Dedup check** — has this notification already fired for today / this month / this
-   escalation level? (Reads Archive.)
-3. **Recipient resolution** — which channel(s), which member DMs, whether leader DM
-   is needed.
-4. **Variant selection** — picks one variant from the message pool for this notification
-   type, personalizes text per recipient where applicable.
+1. **Eligibility** — does the data meet the threshold? Grace period over? Tally still open?
+2. **Dedup** — does an Archive record for this `notificationKey` already exist?
+3. **Recipient resolution** — which channels, which member DMs, whether leader DM needed
+4. **Variant selection** — picks message content and image parameters from the pool
 
-If any check fails, Inspector rejects the job cleanly. Nothing is written to Archive.
-If all checks pass, Inspector outputs a validated notification envelope.
+If any check fails → Inspector rejects the job cleanly. Nothing is written.
+
+If all checks pass → Inspector writes the full notification record (delivery plan +
+payload + flags all at 0) to Archive, then passes the `notificationKey` to Announcer.
+
+Inspector is the **only** department that creates new Archive records.
 
 ### Archive
 
-The notification state store. Archive is the source of truth that makes the entire
-Broadcast pipeline restart-safe.
+Pure storage. Archive holds notification records and delivery state. It contains no
+pipeline logic — it only stores what Inspector writes and serves what Announcer reads.
 
-Every notification that passes Inspector is **claimed atomically** in Archive before
-a single Discord message is sent. This mirrors the pattern already implemented in
-`milestoneDb.js`:
+Three callers, three distinct operations:
 
-```text
-claim (INSERT OR IGNORE)
-  → channel_sent = 0
-  → dm_member_sent = 0
-  → dm_leader_sent = 0
-```
+| Operation | Caller |
+|---|---|
+| `INSERT` new notification record | Inspector only |
+| `UPDATE` delivery flags (`channel_sent`, `dm_member_sent`, `dm_leader_sent`) | Announcer only |
+| `SELECT` incomplete records for restart recovery | Broker only |
+| `SELECT` notification record by key | Announcer only |
+| `INSERT` delivery history row | Announcer only |
 
-Archive responsibilities:
-
-- **Claim** — atomic INSERT so no second Broker run can double-fire the same notification
-- **Track** — per-step delivery flags updated by Announcer after each step succeeds
-- **History** — append-only audit log of every notification event and delivery outcome
-- **Retry surface** — surfaces records with flags still at 0 to Broker on restart
-- **Pruning** — age-based retention cleanup to prevent unbounded growth
-
-Archive is the only department in Broadcast that writes to a database.
+Archive exposes a clean interface for each caller. No caller reaches into the database
+directly — all access goes through Archive's interface.
 
 ### Announcer
 
-The delivery engine. Announcer receives a claimed Archive record (notification is
-already validated and persisted) and executes the delivery plan that Inspector produced.
+The delivery engine. Announcer receives a `notificationKey` from Inspector (new delivery)
+or from Broker (restart recovery retry). It reads the full notification record from Archive,
+then executes the delivery plan step by step.
 
-Delivery order for each notification:
+For each step:
+1. Check the flag — if already 1, skip.
+2. Execute the step (render card, post to channel, send DM).
+3. On success → update the flag in Archive → append history row.
+4. On failure → log the error → leave the flag at 0 → return (Broker will surface
+   the record again on the next run for retry).
 
-1. Request image card render from `Workshop/Fabricator` if needed
-2. Post to announcement channel(s); on success → `Archive.markChannelSent()`
-3. Send DM to each qualifying member; on success → `Archive.markDmMemberSent()`
-4. Send DM to leader if required; on success → `Archive.markDmLeaderSent()`
-
-If a Discord API call fails, Announcer does not retry immediately. It leaves the flag
-at 0 in Archive and lets the next Broker run route the record back to Announcer.
-This keeps Announcer simple and stateless — all retry state lives in Archive.
+Announcer never re-evaluates eligibility. It delivers what Archive holds, exactly once
+per step, regardless of how many times it is called.
 
 ---
 
 ## Restart-Safety Contract
 
-The full restart-safety guarantee:
-
 ```text
-Bot restarts mid-delivery
-     │
-     ▼
-Broker reads Archive for records with any flag = 0
-     │
-     ▼
-Announcer retries only the steps with flag = 0
-(Inspector is not re-run — the claim already exists)
-     │
-     ▼
-No duplicate sends for steps already flagged = 1
-No missing sends for steps still flagged = 0
-```
+Bot restarts mid-delivery (channel posted, DMs not yet sent):
 
-This contract is already proven in production by `milestone/milestones.js`.
-The Broadcast pipeline formalizes it as a shared infrastructure for all notification types.
+  Archive record:
+    channel_sent   = 1   ← already done, skip
+    dm_member_sent = 0   ← not yet done
+    dm_leader_sent = 0   ← not yet done
+
+  On next Broker run:
+    Broker reads Archive.getIncomplete()
+    → routes record to Announcer (skips Inspector)
+    Announcer checks each flag:
+    → channel step: flag=1, skip
+    → member DM step: flag=0, execute
+    → leader DM step: flag=0, execute
+    Result: no duplicate channel post; no missed DMs
+```
 
 ---
 
@@ -151,9 +144,9 @@ The Broadcast pipeline formalizes it as a shared infrastructure for all notifica
 
 | | Direction | What is exchanged |
 |---|---|---|
-| `Refinery/Depot` | Broadcast reads | Compiled products, computed threshold values |
+| `Refinery/Depot` | Broker reads | Compiled products, computed threshold values |
 | `Workshop/Fabricator` | Announcer calls | Image card render requests (Fabricator renders, Announcer delivers) |
-| `Broadcast/Archive` | Internal | Claim records, delivery flags, history |
+| `Broadcast/Archive` | Inspector writes; Announcer reads + updates; Broker reads on restart | Notification records and delivery flags |
 | Discord | Announcer writes | Channel posts, member DMs, leader DMs |
 
 Broadcast never imports from Workshop/Terminal, Distribution, or Umamoe.
@@ -162,12 +155,12 @@ Broadcast never imports from Workshop/Terminal, Distribution, or Umamoe.
 
 ## Adding a New Notification Type
 
-1. Add the eligibility rule to `Broadcast/Inspector/`
-2. Add the Archive schema (table + claim/flag functions) to `Broadcast/Archive/`
-3. Add the render template to `Workshop/Fabricator/reports/`
-4. Add the delivery handler to `Broadcast/Announcer/`
-5. Add the Broker entry point (cron registration + job envelope) to `Broadcast/Broker/`
-6. Register the cron schedule in `tasks/index.js`
+1. **Inspector** — add the eligibility rule, dedup key format, recipient resolver, and variant pool
+2. **Archive** — add the Archive schema entry if a new `notificationKey` format is needed (usually the existing schema covers it)
+3. **Workshop/Fabricator** — add the render template for the image card
+4. **Announcer** — add the delivery handler for the new type
+5. **Broker** — add the data fetch logic and cron registration
+6. **`tasks/index.js`** — register the cron schedule
 
 No other directory needs to change.
 
@@ -176,3 +169,5 @@ No other directory needs to change.
 ## Version History
 
 - `v1.0` — Initial Broadcast architecture specification
+- `v1.1` — Clarified department boundaries: Inspector is sole Archive writer; Broker is
+  data courier only; Archive is pure storage; Announcer reads Archive to execute delivery

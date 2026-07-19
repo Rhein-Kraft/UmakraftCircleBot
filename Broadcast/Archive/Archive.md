@@ -4,35 +4,41 @@
 
 The **Archive** is the notification state store of the Broadcast pipeline.
 
-It makes the entire pipeline restart-safe. Every notification that passes Inspector
-is claimed atomically in Archive before a single Discord message is sent. Per-step
-delivery flags track exactly which steps have been completed, so a bot restart mid-delivery
-never causes a duplicate send or a missed send.
+Archive is pure storage. It holds no pipeline logic, makes no decisions, and performs
+no eligibility checks. It stores exactly what Inspector writes and serves exactly what
+Announcer and Broker request.
+
+Its schema and interface are designed so that the full delivery state of every
+notification is visible at a glance and recoverable after a bot restart.
 
 ---
 
 ## Responsibilities
 
-1. **Claim** — accept an atomic INSERT for each validated notification envelope.
-   Uses `INSERT OR IGNORE` so a second Broker run for the same notification key
-   is a no-op. A record in Archive means "this notification has been approved to send."
+Archive has four responsibilities and no others:
 
-2. **Track delivery flags** — maintain three boolean flags per record, each updated
-   by Announcer after the corresponding step succeeds:
-   - `channel_sent` — announcement posted to the Discord channel
-   - `dm_member_sent` — personal DM(s) sent to qualifying members
-   - `dm_leader_sent` — DM sent to the circle leader (where applicable)
+1. **Store** — accept a new notification record written by Inspector.
+2. **Serve** — return a notification record to Announcer by `notificationKey`.
+3. **Surface** — return incomplete records (any delivery flag = 0) to Broker for restart recovery.
+4. **Prune** — delete records older than the retention window on a scheduled basis.
 
-3. **Surface incomplete records** — return records with any flag still at 0 to Broker
-   on restart so Announcer can retry only the outstanding steps.
+Archive does not evaluate eligibility, resolve recipients, select variants, render
+content, or send to Discord.
 
-4. **History log** — append an entry to the audit log after each delivery attempt,
-   recording the outcome (success, failure, Discord error code).
+---
 
-5. **Pruning** — age-based retention cleanup to prevent unbounded growth. Old records
-   beyond the retention window are deleted on a scheduled basis.
+## Who Calls Archive
 
-Archive is the only department in Broadcast that writes to a persistent database.
+| Operation | Caller | Description |
+|---|---|---|
+| `INSERT` new record | Inspector only | Full notification record written on approval |
+| `SELECT` by key | Announcer | Read the full delivery plan and payload |
+| `UPDATE` delivery flag | Announcer only | Mark each step complete after success |
+| `INSERT` history row | Announcer only | Append delivery attempt outcome |
+| `SELECT` incomplete | Broker only | Find records with any flag = 0 for restart recovery |
+| `DELETE` old records | Scheduled prune | Age-based retention cleanup |
+
+No other department reads or writes Archive directly.
 
 ---
 
@@ -40,7 +46,8 @@ Archive is the only department in Broadcast that writes to a persistent database
 
 ### `broadcast_claims` table
 
-Stores one record per notification event. Primary key is `notification_key`.
+One record per notification event. Primary key is `notification_key`.
+Created by Inspector via `INSERT OR IGNORE` — a second insert for the same key is a no-op.
 
 ```sql
 CREATE TABLE IF NOT EXISTS broadcast_claims (
@@ -54,130 +61,138 @@ CREATE TABLE IF NOT EXISTS broadcast_claims (
   channel_msg_id    TEXT,
   channel_id        TEXT,
   guild_id          TEXT,
-  payload_json      TEXT
+  payload_json      TEXT    NOT NULL
 );
+
 CREATE INDEX IF NOT EXISTS idx_bc_type_circle
   ON broadcast_claims(type, circle_id);
+
 CREATE INDEX IF NOT EXISTS idx_bc_incomplete
-  ON broadcast_claims(channel_sent, dm_member_sent, dm_leader_sent)
-  WHERE channel_sent = 0 OR dm_member_sent = 0 OR dm_leader_sent = 0;
+  ON broadcast_claims(channel_sent, dm_member_sent, dm_leader_sent);
 ```
+
+`payload_json` stores the full notification record serialized by Inspector — recipients,
+variant selection, image parameters, and message content. Announcer reads this to
+execute the delivery plan without re-running Inspector.
 
 ### `broadcast_history` table
 
-Append-only audit log. One row per delivery attempt per step.
+Append-only audit log. One row per delivery step attempt. Written by Announcer only.
 
 ```sql
 CREATE TABLE IF NOT EXISTS broadcast_history (
   id                INTEGER PRIMARY KEY AUTOINCREMENT,
   notification_key  TEXT    NOT NULL,
-  step              TEXT    NOT NULL,   -- 'channel' | 'dm_member' | 'dm_leader'
-  outcome           TEXT    NOT NULL,   -- 'success' | 'failure'
+  step              TEXT    NOT NULL,
+  outcome           TEXT    NOT NULL,
   discord_code      INTEGER,
   attempted_at      TEXT    NOT NULL DEFAULT (datetime('now')),
-  detail            TEXT
+  detail            TEXT,
+  FOREIGN KEY (notification_key) REFERENCES broadcast_claims(notification_key)
 );
+
 CREATE INDEX IF NOT EXISTS idx_bh_key ON broadcast_history(notification_key);
 ```
+
+`step` values: `'channel'` | `'dm_member'` | `'dm_leader'`
+`outcome` values: `'success'` | `'failure'`
 
 ---
 
 ## Interface
 
 ```javascript
-// Atomically claim a notification; returns { claimed: true } or { claimed: false } (already exists)
-await archive.claim(notificationKey, { type, circleId, payloadJson })
+// Called by Inspector: insert a new notification record
+// Uses INSERT OR IGNORE — safe to call multiple times for the same key
+await archive.insert(record)
+/*
+  record = {
+    notificationKey,  type,  circleId,
+    recipients,       payload
+  }
+*/
 
-// Mark a delivery step as complete
+// Called by Announcer: read a full notification record
+const record = await archive.get(notificationKey)
+
+// Called by Broker: find all incomplete records for a circle (any flag = 0)
+const records = await archive.getIncomplete(circleId)
+
+// Called by Announcer: mark a delivery step complete
 await archive.markChannelSent(notificationKey, { channelMsgId, channelId, guildId })
 await archive.markDmMemberSent(notificationKey)
 await archive.markDmLeaderSent(notificationKey)
 
-// Return records with any delivery flag still at 0 for a given circle
-await archive.getIncomplete(circleId)
-
-// Append a delivery attempt to the history log
+// Called by Announcer: append a delivery attempt to the history log
 await archive.recordHistory(notificationKey, { step, outcome, discordCode, detail })
 
-// Delete records older than the retention window
+// Called by scheduled task: remove records older than retention window
 await archive.prune({ olderThanDays })
 
-// Initialize the database and run migrations
+// Initialize database and run migrations
 await archive.init()
 ```
 
 ---
 
-## Existing Archive Implementations
-
-The Archive pattern is already in production across three separate databases.
-The Broadcast/Archive unification consolidates them into one interface and one database:
-
-| Current file | Table(s) | Migrates to |
-|---|---|---|
-| `fantracking/milestone/db.js` | `milestone_fired` | `broadcast_claims` + `broadcast_history` |
-| `fantracking/warnings/db.js` | `warning_state`, `warning_history` | `broadcast_claims` + `broadcast_history` |
-| `fantracking/achievements/db.js` | `member_achievements` | `broadcast_claims` + `broadcast_history` |
-
-> **Migration note:** Existing rows in `milestone_fired` and `warning_state` must be
-> backfilled into `broadcast_claims` on first boot to preserve dedup guarantees.
-> Records with all flags = 1 are imported as fully sent. Records with any flag = 0
-> are imported as incomplete so Announcer will retry them.
-
----
-
 ## Adapter Contract
 
-Archive is implemented via an adapter so local development and tests can use an
-in-memory store without touching SQLite.
+Archive is implemented via an adapter so local development and tests use an in-memory
+store without touching SQLite.
 
 ```javascript
 // In-memory adapter (tests and local dev)
 const archive = createArchiveAdapter('inmemory')
 
 // SQLite adapter (production)
-const archive = createArchiveAdapter('sqlite', { dbPath: config.dataDir + '/broadcast.db' })
+const archive = createArchiveAdapter('sqlite', { dbPath })
 ```
 
-Both adapters must implement the full interface above with identical semantics.
+Both adapters implement the full interface with identical semantics. The in-memory
+adapter is not durable — data is lost on process exit.
 
 ---
 
-## Restart-Safety Guarantee
+## Migration from Existing Databases
 
-```text
-Bot restarts mid-delivery (e.g. channel posted, DM not yet sent):
+The Archive unifies three separate notification databases that currently exist in production:
 
-  broadcast_claims record:
-    channel_sent   = 1   ← already done
-    dm_member_sent = 0   ← not yet done
-    dm_leader_sent = 0   ← not yet done
+| Current file | Current table(s) | Migrates to Archive |
+|---|---|---|
+| `fantracking/milestone/db.js` | `milestone_fired` | `broadcast_claims` + `broadcast_history` |
+| `fantracking/warnings/db.js` | `warning_state`, `warning_history` | `broadcast_claims` + `broadcast_history` |
+| `fantracking/achievements/db.js` | `member_achievements` | `broadcast_claims` + `broadcast_history` |
 
-  On next Broker.run():
-    archive.getIncomplete(circleId) returns this record
-    → Announcer retries ONLY dm_member_sent and dm_leader_sent steps
-    → No duplicate channel post (channel_sent = 1 is respected)
-```
+**Migration rules on first boot:**
+- Records with all delivery flags = 1 → import as fully sent (dedup protection preserved)
+- Records with any delivery flag = 0 → import as incomplete (Broker will surface them for Announcer retry)
+- `payload_json` is reconstructed from the existing record where possible; otherwise
+  the record is marked as fully sent to avoid a broken retry
 
 ---
 
-## Workflow
+## Restart-Safety Illustration
 
 ```text
-Inspector (validated envelope)
-     │
-     ▼
-Archive.claim(notificationKey, ...)
-  INSERT OR IGNORE → channel_sent=0, dm_member_sent=0, dm_leader_sent=0
-     │
-     ▼
-Announcer executes delivery plan
-  → Archive.markChannelSent()    after channel post
-  → Archive.markDmMemberSent()   after member DMs
-  → Archive.markDmLeaderSent()   after leader DM
-     │
-     ▼
-Archive.recordHistory()  after each step (success or failure)
+Scenario: Bot restarts after channel post succeeds but before DMs are sent.
+
+broadcast_claims record:
+  notification_key = "daily-warning:circle-001:2026-07-19"
+  channel_sent     = 1   ← done
+  dm_member_sent   = 0   ← not done
+  dm_leader_sent   = 0   ← not applicable (null recipients)
+
+On next Broker.run():
+  archive.getIncomplete('circle-001')
+  → returns this record
+  → Broker routes notificationKey to Announcer
+
+Announcer reads record:
+  → channel step:    flag=1, skip
+  → member DM step:  flag=0, execute → markDmMemberSent() on success
+  → leader DM step:  no recipient, skip
+
+Result: no duplicate channel post, no missed DMs.
 ```
 
 ---
@@ -186,16 +201,30 @@ Archive.recordHistory()  after each step (success or failure)
 
 Archive is a ledger, not a processor.
 
-It records what has been approved to send and what has been delivered. It does not
-evaluate whether a notification should fire — that is Inspector's job. It does not
-send anything — that is Announcer's job.
+Every record in Archive was written by Inspector — meaning it was explicitly approved,
+deduplicated, and had its delivery plan resolved before it was stored. Announcer
+trusts the record completely and delivers without re-evaluating anything.
 
-The atomic claim step is the contract boundary: once a `notification_key` exists in
-Archive, it will be delivered exactly once per step, regardless of how many times
-Broker runs or how many times the bot restarts.
+The atomic `INSERT OR IGNORE` on `notification_key` is the single guarantee that
+prevents duplicate notifications. Everything else in the Broadcast pipeline depends
+on this guarantee holding.
+
+---
+
+## Current Source Files
+
+Logic and schema extracted into Archive from these files:
+
+| Current file | Archive responsibility |
+|---|---|
+| `fantracking/milestone/db.js` | Claim record, `channel_sent`/`dm_*_sent` flags, `milestone_fired` schema |
+| `fantracking/warnings/db.js` | Warning state per trainer per day, `warning_history` audit log |
+| `fantracking/achievements/db.js` | Achievement record per trainer per tier per month |
 
 ---
 
 ## Version History
 
 - `v1.0` — Initial Archive specification
+- `v1.1` — Redefined as pure storage: Inspector is sole record creator; Announcer is
+  sole flag updater; Broker is sole incomplete-record reader; no pipeline logic in Archive
