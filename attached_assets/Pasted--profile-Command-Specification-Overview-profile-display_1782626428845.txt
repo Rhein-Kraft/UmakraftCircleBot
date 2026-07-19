@@ -1,0 +1,419 @@
+# `/profile` Command Specification
+
+## Overview
+
+`/profile` displays a member's permanent achievements, milestones, statistics, and progression history.
+
+Unlike `/fangain`, which focuses on current progress, `/profile` highlights long-term accomplishments and serves as the member's permanent identity within the guild.
+
+All responses are generated as an Image Report.
+
+---
+
+# Command
+
+```text
+/profile
+```
+
+Default behavior displays the requesting member.
+
+Future enhancement
+
+```text
+/profile @member
+```
+
+Allows viewing another linked member's profile.
+
+---
+
+# Header
+
+Display
+
+* Discord Avatar
+* Discord Display Name
+* Trainer Name
+* Circle Name
+* Profile Grade
+* Current Badge
+* Current Title
+
+---
+
+# Basic Information
+
+Display
+
+* Trainer Name
+* Discord Name
+* Link Date
+* Days in Circle
+* Last Sync Time
+
+---
+
+# Achievement Summary
+
+Display
+
+* Total Achievements Unlocked
+* Achievement Completion Percentage
+* Legendary Achievements
+* Rare Achievements
+
+Example
+
+🏆 26 Achievements
+
+⭐ 82% Complete
+
+👑 3 Legendary
+
+---
+
+# Highest Milestone
+
+Display
+
+Current Highest Milestone
+
+Example
+
+💎 100 Million Legend
+
+Reached
+
+2026-06-25
+
+---
+
+# Milestone History
+
+Display
+
+* Total Milestones Triggered
+* Latest Milestone
+* First Milestone
+* Special Milestones Earned
+
+---
+
+# Fan Gain Streak
+
+Display
+
+* Current Completion Streak
+* Longest Completion Streak
+* Best Monthly Streak
+
+Example
+
+🔥 Current
+
+18 Days
+
+🏆 Record
+
+42 Days
+
+---
+
+# Performance Statistics
+
+Display
+
+* Personal Best Daily Gain
+* Personal Best Weekly Gain
+* Personal Best Monthly Gain
+* Lifetime Fan Gain
+
+---
+
+# Rankings
+
+Display
+
+Current Rankings
+
+* Daily Rank
+* Weekly Rank
+* Monthly Rank
+
+Best Rankings
+
+* Highest Daily Rank
+* Highest Weekly Rank
+* Highest Monthly Rank
+
+---
+
+# Achievement Badges
+
+Display earned badges.
+
+Examples
+
+🏆 Milestone Champion
+
+🔥 Completion Master
+
+⭐ Top 10
+
+👑 Legend
+
+💎 100 Million
+
+🚀 Fast Climber
+
+Only earned badges are displayed.
+
+---
+
+# Trophy Cabinet
+
+Display milestone trophies.
+
+Examples
+
+🥉 10M
+
+🥈 20M
+
+🥇 40M
+
+💎 60M
+
+👑 80M
+
+🌟 100M
+
+Locked trophies remain hidden or greyed out.
+
+---
+
+# Activity Statistics
+
+Display
+
+* Days Linked
+* Total Syncs
+* Successful Daily Completions
+* Completion Rate
+* Warning Recoveries
+
+---
+
+# Honors
+
+Display special recognitions.
+
+Examples
+
+🏅 Circle Veteran
+
+🏅 Milestone Hunter
+
+🏅 Perfect Week
+
+🏅 Perfect Month
+
+🏅 Top Performer
+
+---
+
+# Current Status
+
+Display
+
+🟢 On Pace
+
+or
+
+🟡 Behind Target
+
+or
+
+🔴 Critical
+
+Uses the Warning System status.
+
+---
+
+# Progress Overview
+
+Display
+
+Current Month Progress
+
+Example
+
+72,430,000
+
+Next Milestone
+
+80,000,000
+
+Remaining
+
+7,570,000
+
+Progress Bar
+
+████████░░
+
+90%
+
+---
+
+# Personal Records
+
+Display
+
+Highest Daily Fan Gain
+
+Highest Weekly Fan Gain
+
+Highest Monthly Fan Gain
+
+Fastest Milestone Unlock
+
+Most Fans Earned In One Day
+
+Longest Completion Streak
+
+Best Ranking Ever
+
+---
+
+# Future Features
+
+## Achievement Gallery
+
+Unlockable achievements with rarity.
+
+* Common
+* Rare
+* Epic
+* Mythic
+* Legendary
+
+---
+
+## Seasonal Achievements
+
+Examples
+
+🎄 Winter Champion
+
+🎃 Halloween Hunter
+
+🎆 Anniversary Winner
+
+---
+
+## Animated Badges
+
+Legendary badges use:
+
+* Sparkle
+* Gold Aura
+* Diamond Particles
+* Rainbow Glow
+
+---
+
+## Profile Themes
+
+Members automatically unlock themes.
+
+Bronze
+
+Silver
+
+Gold
+
+Diamond
+
+Legend
+
+---
+
+## Performance Grade
+
+Automatic grade
+
+S+
+
+S
+
+A+
+
+A
+
+B
+
+C
+
+Calculated from
+
+* Completion Rate
+* Streak
+* Achievement Count
+* Milestones
+* Warnings
+* Activity
+
+---
+
+## Lifetime Statistics
+
+Display
+
+* Total Monthly Fans Earned
+* Total Days Active
+* Total Milestones
+* Total Achievements
+* Total Leaderboard Appearances
+* Total #1 Finishes
+
+---
+
+## Footer
+
+Display
+
+* Report Generated Time
+* Data Source (uma.moe)
+* Bot Version
+
+---
+
+# Design Principles
+
+* Permanent member identity.
+* Focus on long-term accomplishments.
+* Celebrate progression rather than only current performance.
+* Reward consistency with achievements and titles.
+* Keep all statistics data-driven.
+* Every profile is generated as an Image Report.
+
+---
+
+# Milestone Goal
+
+The `/profile` command should become the member's permanent showcase.
+
+A single image should instantly communicate:
+
+* Who the member is.
+* What they have accomplished.
+* Their highest milestone.
+* Their achievements.
+* Their streaks.
+* Their personal records.
+* Their current status.
+* Their progression toward the next milestone.
+
+The profile should evolve naturally as the member continues playing, making it a living record of their journey within the circle.

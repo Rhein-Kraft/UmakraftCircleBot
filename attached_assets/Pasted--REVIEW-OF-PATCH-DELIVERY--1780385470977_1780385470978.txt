@@ -1,0 +1,209 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+REVIEW OF PATCH DELIVERY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Overall assessment:
+
+The patch set looks coherent and appropriately scoped. C-1 appears to be
+a direct fix for a verified production-impacting bug. H-1, H-2 and H-3
+are reasonable implementations of the previously identified findings.
+
+Before merging, I would verify a few assumptions directly from source.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+C-1 — getStoredJoinedAt()
+VERDICT: APPROVE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The change:
+
+BEFORE:
+getStoredJoinedAt(trainerId)
+→ store.getMembers()
+
+AFTER:
+getStoredJoinedAt(trainerId, circleId)
+→ store.getMembersForCircle(circleId)
+
+is exactly the fix expected from the audit.
+
+Why this looks safe:
+
+* getStoredJoinedAt() is private.
+* Only one call site exists.
+* circleId already exists in buildSnapshot().
+* Return type is unchanged.
+* Circle 1 behavior remains identical.
+
+This is the highest-value patch in the set and should be merged first.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+H-1 — nameLinker
+VERDICT: APPROVE AFTER SOURCE CHECK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The logic is correct:
+
+getConfiguredCircles()
+→ getCircleSnapshot(c.id)
+→ merge trainer names
+
+This solves the verified Circle 2 auto-link issue.
+
+Before merging, verify the import source:
+
+grep -R "getConfiguredCircles" .
+
+to confirm the helper actually lives in:
+
+../core/config.js
+
+and not another module.
+
+The algorithm itself looks correct.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+H-2 — setCircle2Quotas.js
+VERDICT: SAFE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The patch correctly changes:
+
+quota_c2_Daily
+quota_c2_Weekly
+quota_c2_Monthly
+
+to:
+
+quota_<circleId>*daily
+quota*<circleId>*weekly
+quota*<circleId>_monthly
+
+which matches resolveQuota().
+
+One question remains:
+
+Is this script still needed?
+
+If quota management is now exclusively handled by:
+
+/set_fans
+
+then deleting the script entirely may be cleaner than maintaining it.
+
+Either option is acceptable:
+
+A) keep and fix
+B) delete
+
+No runtime risk either way.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+H-3 — prevMonthCache
+VERDICT: APPROVE AFTER SEARCH
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The move from:
+
+let prevMonthCache = { ... }
+
+to:
+
+const prevMonthCache = new Map()
+
+is the correct architectural fix.
+
+Before merging:
+
+grep -R "prevMonthCache" .
+
+and verify there are no remaining references such as:
+
+prevMonthCache.key
+prevMonthCache.data
+prevMonthCache.expires
+
+outside the patched block.
+
+If none remain, the change is safe.
+
+Failure mode is merely cache misses and extra API calls,
+not data corruption.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ADDITIONAL PATCH I WOULD INCLUDE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+leaderboard.js weekly quota default
+
+Current:
+
+config.dailyRequirement * 7
+
+Recommended:
+
+config.weeklyRequirement
+
+Reason:
+
+* weeklyRequirement already exists
+* used elsewhere as authoritative value
+* avoids future config drift
+
+Expected change:
+
+* config.dailyRequirement * 7
+
+- config.weeklyRequirement
+
+Very low risk.
+One-line patch.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RECOMMENDED MERGE ORDER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+DEPLOY 1
+✅ C-1 getStoredJoinedAt
+✅ H-1 nameLinker
+
+Reason:
+These affect actual user-visible behavior.
+
+DEPLOY 2
+✅ H-2 setCircle2Quotas
+✅ leaderboard weekly default
+✅ H-3 prevMonthCache
+
+Reason:
+Maintenance and scalability fixes.
+
+LATER
+⚠️ M-1 historicalMonthCache
+⚠️ M-2 syncStatus redesign
+⚠️ scheduler dependency checks
+
+Reason:
+Important for future scale, not urgent for current 2-circle operation.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FINAL ASSESSMENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Based on all audit reports and patch proposals reviewed so far:
+
+Highest-priority correctness bug:
+C-1 getStoredJoinedAt
+
+Highest-priority feature gap:
+H-1 nameLinker
+
+Most likely dead code:
+H-2 setCircle2Quotas.js
+
+Most valuable scalability improvement:
+H-3 prevMonthCache
+
+After C-1 and H-1 are merged, the repo appears substantially healthier,
+with the remaining issues primarily related to scaling, caching and
+operational observability rather than incorrect member calculations.

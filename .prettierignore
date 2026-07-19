@@ -1,0 +1,5 @@
+node_modules/
+data/
+attached_assets/
+milestone_images/
+*.md

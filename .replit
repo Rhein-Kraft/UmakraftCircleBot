@@ -1,5 +1,61 @@
+modules = ["nodejs-20", "web"]
+
+[deployment]
+router = "application"
+deploymentTarget = "autoscale"
+
+[deployment.postBuild]
+args = ["pnpm", "store", "prune"]
+env = { "CI" = "true" }
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Discord Bot"
+
+[[workflows.workflow]]
+name = "Discord Bot"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node start.js"
+waitForPort = 5000
+
+[agent]
+stack = "BEST_EFFORT_FALLBACK"
+expertMode = true
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 20000
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
 [nix]
 channel = "stable-25_05"
 
-[agent]
-expertMode = true
+[userenv]
+
+[userenv.shared]
+CIRCLE_ID = "974470619"
+DATA_DIR = "./data"
+TIMEZONE = "Asia/Tokyo"
+LOG_LEVEL = "info"
+DISCORD_CLIENT_ID = "1499028508007989288"
+GUILD_ID = "1489093959044173935"
+CIRCLE_2_ID = "325938032"
+CIRCLE_2_NAME = "UmaKraft 2"
+PORT = "5000"

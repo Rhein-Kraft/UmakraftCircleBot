@@ -1,0 +1,433 @@
+# Discord Bot Features for Uma.moe Circle Management
+
+Use this GitHub repository as the base project/reference for the Discord bot:
+
+```txt
+CREATE REPOSITORY ON GITHUB
+https://github.com/Falco-chan?tab=repositories
+```
+
+Requirements:
+
+* Refactor and optimize the existing project structure
+* Make it compatible with Railway hosting
+* Keep Replit compatibility
+* Remove unnecessary Replit keep-alive/web server code
+* Preserve all current bot features and commands
+* Improve readability and performance for easier maintenance
+* Upload all updated changes back to the GitHub repository
+* Ensure the bot automatically excludes members who already left the club
+
+---
+
+# Fan Tracking Commands
+
+## `/fan_gain`
+
+Displays:
+
+* Total accumulated fan gain from Day 1 up to the current date
+* Total fan gain for the last 7 days
+* Daily fan gain ranking
+
+Example:
+
+```txt
+Koeru
+Daily Fan Gain: 3,168,346
+Weekly Fan Gain: 18,410,287
+Monthly Fan Gain: 56,388,206
+Ranking: #1
+```
+
+> Do not display total lifetime fans in this command.
+
+---
+
+## `/leaderboard`
+
+Displays rankings from highest to lowest fan gain.
+
+Features:
+
+* Daily fan gain
+* Weekly fan gain
+* Monthly fan gain
+* Adjustable ranking display (Top 10 to Top 30)
+
+Example:
+
+```txt
+#1 Koeru
+Daily Fan Gain: 3,168,346
+Weekly Fan Gain: 18,410,287
+Monthly Fan Gain: 56,388,206
+```
+
+Additional Features:
+
+* Automatically resets monthly rankings every new month
+* Excludes members who already left the club
+* Automatically updates every 24 hours
+* Marks newly joined members with a `NEW MEMBER` tag
+
+Example:
+
+```txt
+Koeru — NEW MEMBER
+```
+
+---
+
+## `/total_fan`
+
+Displays only the player's total lifetime fans.
+
+Example:
+
+```txt
+Koeru
+Rank: #1
+Total Fan Count: 258,140,044
+```
+
+---
+
+## `/total_circlefan_gain`
+
+Displays the total accumulated fans of the entire circle.
+
+Members who already left the circle must be excluded automatically.
+
+---
+
+## `/circle_master`
+
+Displays the Top 3 daily contributors in calendar format.
+
+Example:
+
+```txt
+Day 1 — April 1, 2026
+Total Daily Gain: 20,000,000
+
+Top Rank
+1. MemberA
+Daily Fan Gain: 2,000,000
+
+2. MemberB
+Daily Fan Gain: 1,500,000
+
+3. MemberC
+Daily Fan Gain: 1,000,000
+```
+
+Features:
+
+* Shows records from Day 1 until the current day
+* Automatically stops at tally period
+* Includes total daily gain of all members
+
+---
+
+# Automatic Leaderboard Posts
+
+## Weekly Contribution Report
+
+Every Monday, the bot automatically posts the current leaderboard in:
+
+`#announcement`
+
+The bot should automatically configure this channel without manual setup.
+
+---
+
+## Tally Contribution Results
+
+Before each tally period, the bot automatically posts:
+
+* 1st Week Results
+* 2nd Week Results
+* 3rd Week Results
+* 4th Week Results
+
+Channel:
+`#result-contribution`
+
+The bot should automatically configure this channel without manual setup.
+
+---
+
+# Monthly Contribution Requirement
+
+Members who fail to reach:
+
+```txt
+15,000,000 monthly fans
+```
+
+should be highlighted automatically.
+
+Members who already left the club must not be included.
+
+---
+
+# Milestone Messages
+
+## 10 Million Fans
+
+Message:
+
+```txt
+You're doing great trainer-san
+```
+
+If tally period is 10 days or less:
+
+```txt
+can you make it trainer-san?
+```
+
+---
+
+## 20 Million Fans
+
+Message:
+
+```txt
+way to go trainer-san, Falco now assured
+```
+
+If tally period is 9 days or less:
+
+```txt
+you're almost there trainer-san, Falco is here to cheer for you
+```
+
+---
+
+## 30 Million Fans
+
+Message:
+
+```txt
+Yey, you really done it trainer-san, Falco really appreciated your effort
+```
+
+If tally period is 4 days or less:
+
+```txt
+we really did it trainer-san I thought we didn't make it
+```
+
+---
+
+## 40 Million Fans or Higher
+
+Message:
+
+```txt
+You're not done yet Trainer-san?? hehe Falco getting greedy, you should take responsibility trainer-san
+```
+
+Display the member’s current monthly fan gain together with the message.
+
+---
+
+# Daily Requirement Warning
+
+If a member fails to gain:
+
+```txt
+1,000,000 fans daily
+```
+
+the bot should send a reminder message.
+
+Exception:
+
+* Do not send reminders if the member already reached 20 million monthly fans
+* and there are still more than 15 days before tally period
+
+---
+
+# Automatic Discord Name Linking
+
+24 hours after the bot starts:
+
+* Automatically match Discord usernames with Uma.moe usernames
+
+If no matching name is found, send:
+
+```txt
+Trainer you are not in our data please match your ingame name and discord name
+```
+
+Repeat this reminder every 4 hours using JST time.
+
+---
+
+# New Member System
+
+When a new member joins the circle:
+
+## Contribution Rules
+
+* Their first day contribution is counted as `0`
+* Fan tracking begins starting the next day
+
+Example:
+
+* If a member joins on April 7:
+
+  * April 7 contribution = 0
+  * Tracking starts April 8
+
+This rule applies to:
+
+* `/fan_gain`
+* `/leaderboard`
+
+But does NOT apply to:
+
+* `/total_fan`
+
+---
+
+## New Member Welcome Message
+
+Send:
+
+```txt
+Welcome, Falco is pleased to see you
+This club requires 30 million fans monthly
+Help other members with their needs, okay ♥️
+```
+
+Also:
+
+* Notify the server leader through DM
+* Add `NEW MEMBER` tag on leaderboard during the same month only
+
+---
+
+# Daily Scheduled Messages
+
+## 6:00 AM
+
+```txt
+Good morning trainer-san, let's work hard again today
+```
+
+## 12:00 PM
+
+```txt
+Still working trainer-san? Falco will bring you lunch
+```
+
+## 12:00 AM
+
+```txt
+Still up trainer-san? Falco will do her best
+```
+
+---
+
+# High Daily Gain Reactions
+
+## 2 Million Daily Gain
+
+```txt
+Whoa trainer-san, that's double what we need 😆
+```
+
+## 3 Million Daily Gain
+
+```txt
+Ohhhhhh, trainer-san, you got triple what we need
+```
+
+## 5–6 Million Daily Gain
+
+```txt
+Whoa trainer-san, you really did it. Falco is so happy
+```
+
+## 7 Million or More Daily Gain
+
+```txt
+You're unstoppable trainer-san, so strong 😆💪👏
+```
+
+These messages should display the member’s current daily gain.
+
+New members should not receive these messages on their first day.
+
+---
+
+# Member Join Date Indicator
+
+Whenever a member chats, display:
+
+```txt
+MemberName:
+
+Joined since December 1, 2025
+```
+
+Features:
+
+* Use bold text if possible
+* Use colored embed styling if supported
+* Exclude the server owner/leader
+
+---
+
+# Automatic Data Updates
+
+Every 30 minutes:
+
+* Update all Uma.moe data
+* Update fan gains
+* Update rankings
+* Remove members who already left the club
+
+Circle ID:
+
+```txt
+974470619
+```
+
+Circle URL:
+
+```txt
+https://uma.moe/circles/974470619
+```
+
+---
+
+# Automatic Message Cleanup
+
+Every 24 hours:
+
+* Delete all bot-generated slash command messages
+* Do not delete normal member messages
+
+---
+
+# Bot Recovery System
+
+If the bot goes offline:
+
+* Retry all slash commands automatically once the bot is online again
+* Send DM notifications to users who used commands during downtime
+
+---
+
+# Weekly Help Post
+
+Every 7 days at 6:00 AM:
+
+* Post all available slash commands and their functions in `#announcement`
+
+The bot should automatically configure the channel.

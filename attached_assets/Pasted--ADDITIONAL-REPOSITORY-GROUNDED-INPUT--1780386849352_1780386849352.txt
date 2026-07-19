@@ -1,0 +1,160 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ADDITIONAL REPOSITORY-GROUNDED INPUT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+After reading the audit findings and the subsequent fixes, I would
+adjust my original concern list slightly.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BIGGEST REMAINING RISK IS NOT COMMANDS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The command layer appears largely solved.
+
+Recent fixes removed several Circle-1-only assumptions from:
+
+* joindate
+* admin_setjoindate
+* test_milestone
+* admin_sync
+
+and nameLinker has now been corrected to iterate all circles.
+
+From the repository evidence provided, command routing is no longer
+the area most likely to break when Circle 3–10 are added.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+THE REAL SCALE TEST IS SNAPSHOT COST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Every major feature ultimately depends on:
+
+buildSnapshot(circleId)
+
+which performs:
+
+fetchCircle()
+classifyMembers()
+computeMemberStats()
+historical lookups
+previous month calculations
+
+The architecture is correctly circle-scoped, but total work grows
+approximately with:
+
+circles × members
+
+Going from:
+
+2 circles × ~100 members
+
+to:
+
+10 circles × ~100–300 members
+
+is a very different operational workload.
+
+Before enabling all 10 circles, I would benchmark:
+
+sync duration
+snapshot duration
+API requests per sync cycle
+memory consumption during sync
+
+and record the results.
+
+Without measurements, scaling assumptions are guesses.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PER-CIRCLE OBSERVABILITY IS NOW WORTH MORE
+THAN ADDITIONAL FEATURES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+If I could only choose one feature before Circle 10 rollout, it would be:
+
+/circle_status
+
+or equivalent admin diagnostics.
+
+For example:
+
+Circle 1  synced 2m ago
+Circle 2  synced 3m ago
+Circle 3  sync failed
+Circle 4  stale snapshot
+Circle 5  healthy
+
+When operating one circle, a global status is enough.
+
+When operating ten circles, operators need to know:
+
+which circle failed
+when it failed
+how long it has been stale
+
+without reading logs.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+WATCH FOR HIDDEN SINGLE-CIRCLE ASSUMPTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The most common bug pattern throughout the audits was:
+
+"works correctly, but silently defaults to Circle 1"
+
+Examples already discovered:
+
+getMembers()
+getCircleSnapshot()
+unscoped member lookups
+legacy quota keys
+
+Because multiple examples already existed, I would assume more may
+still exist.
+
+For future reviews, I would specifically search for:
+
+config.circleId
+getMembers()
+getCircleSnapshot()
+deprecated store helpers
+
+inside production paths.
+
+Those searches have historically produced the highest-value findings.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+10-CIRCLE READINESS CRITERIA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Personally, I would consider the project ready for all 10 circles when:
+
+✅ Every production path accepts circleId explicitly
+✅ No deprecated Circle-1-only helpers remain in runtime code
+✅ Snapshot/cache behavior is isolated per circle
+✅ Per-circle sync visibility exists
+✅ Sync duration is measured and acceptable under load
+✅ A failed sync in one circle cannot hide behind successful syncs in others
+
+At that point the architecture is no longer "multi-circle capable."
+
+It becomes genuinely multi-circle operationally.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FINAL ASSESSMENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Based on everything provided so far, the repository no longer looks
+like a "Circle 1 bot with Circle 2 patches."
+
+It increasingly looks like a true multi-circle system that is still
+working through the last generation of single-circle assumptions.
+
+The remaining work appears to be concentrated in:
+
+observability,
+cache isolation,
+sync monitoring,
+and scale validation,
+
+rather than command functionality itself.

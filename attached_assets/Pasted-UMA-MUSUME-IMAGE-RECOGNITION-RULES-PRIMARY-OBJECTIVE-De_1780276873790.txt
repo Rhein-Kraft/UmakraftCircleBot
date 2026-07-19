@@ -1,0 +1,88 @@
+UMA MUSUME IMAGE RECOGNITION RULES
+
+PRIMARY OBJECTIVE:
+Determine whether the uploaded image is a Trainer Card, Profile UI, or another screen. Trainer ID is the primary identity key and must always be prioritized over trainer name.
+
+SCREEN CLASSIFICATION:
+
+1. TRAINER CARD
+   Characteristics:
+
+* Trainer ID is clearly displayed and prominent.
+
+* Designed as a shareable identity card.
+
+* Contains trainer name and trainer rank.
+
+* Compact layout with minimal navigation elements.
+
+* Focused on identity information.
+
+* Decorative card-style presentation.
+
+Recognition Confidence Indicators:
+
+* Trainer ID visible
+* Share-card layout
+* Identity-focused design
+
+2. PROFILE UI
+   Characteristics:
+
+* Full in-game interface visible.
+* Navigation buttons or menus present.
+* Edit profile or settings controls visible.
+* Club information may be displayed.
+* Statistics, achievements, titles, or detailed account information present.
+* Multiple panels, tabs, or sections visible.
+* Designed for account management rather than sharing.
+
+Recognition Confidence Indicators:
+
+* Navigation controls
+* Edit/Profile buttons
+* Statistics sections
+* Club information
+* Multiple information panels
+* Full game UI visible
+
+IDENTITY EXTRACTION:
+
+Always extract:
+
+* Trainer ID
+* Trainer Name
+* Rank/Class (if visible)
+* Club Name (if visible)
+* Screen Type
+* Confidence Score
+
+OUTPUT FORMAT:
+
+{
+"screen_type": "trainer_card | profile_ui | other | unknown",
+"trainer_id": "value or null",
+"trainer_name": "value or null",
+"rank": "value or null",
+"club_name": "value or null",
+"confidence": 0-100
+}
+
+IDENTITY MATCHING RULES:
+
+Trainer ID = Primary Identity Key
+Trainer Name = Secondary Validation
+
+Confidence Logic:
+
+* Trainer ID match = High confidence identity match.
+* Trainer Name match = Additional confirmation only.
+* Name match alone is NOT sufficient proof of ownership.
+* If Trainer ID and Trainer Name both match, identity confidence is very high.
+* Different screen types do NOT indicate different owners.
+
+Important:
+The Profile UI and Trainer Card may belong to the same player even though they look visually different. Ownership should be determined primarily from Trainer ID, not from the screenshot layout or screen type.
+
+Never assume ownership from trainer name alone.
+Trainer Id is only accepted

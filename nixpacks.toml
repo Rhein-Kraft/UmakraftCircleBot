@@ -1,0 +1,26 @@
+providers = ["node"]
+
+[variables]
+NIXPACKS_NODE_VERSION = "20"
+NPM_CONFIG_PRODUCTION = "true"
+PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "0"
+PLAYWRIGHT_BROWSERS_PATH = "/ms-playwright"
+
+[phases.setup]
+nixPkgs = [
+  "nodejs_20", "npm-10_x",
+  "chromium", "nss", "nspr", "atk", "cups", "dbus", "libdrm",
+  "xorg.libX11", "xorg.libXcomposite", "xorg.libXdamage", "xorg.libXext",
+  "xorg.libXfixes", "xorg.libXrandr", "mesa", "libgbm", "expat",
+  "xorg.libxcb", "xorg.libXcursor", "xorg.libXi", "xorg.libXtst",
+  "pango", "cairo", "alsa-lib", "glib", "gtk3"
+]
+
+[phases.install]
+cmds = [
+  "npm ci --omit=dev || npm install --omit=dev",
+  "npx playwright install chromium --with-deps || true"
+]
+
+[start]
+cmd = "node index.js"

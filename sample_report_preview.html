@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>UmaKraft Report Theme Preview</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Noto Sans JP', system-ui, Arial, sans-serif;
+      background: #f0f2f5;
+      color: #1a1a1a;
+      font-weight: 700;
+      padding: 24px;
+    }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 900;
+      color: #ec407a;
+      margin-bottom: 8px;
+    }
+
+    p.subtitle {
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 24px;
+      font-weight: 700;
+    }
+
+    .section {
+      margin-bottom: 36px;
+    }
+
+    .section-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: rgba(0,0,0,0.45);
+      margin-bottom: 14px;
+      font-weight: 700;
+      border-left: 3px solid #ec407a;
+      padding-left: 10px;
+    }
+
+    /* ── Shared card structure ── */
+    .card {
+      background: #ffffff;
+      border-radius: 0;
+      overflow: hidden;
+      box-shadow: 0 2px 14px rgba(0,0,0,0.12);
+      display: inline-block;
+      vertical-align: top;
+      margin-bottom: 16px;
+    }
+
+    .accent-bar   { height: 3px; background: linear-gradient(90deg, #f06292, #ec407a); }
+    .header-grad  { padding: 14px 18px 12px; background: linear-gradient(135deg, #f06292 0%, #ec407a 100%); }
+    .htitle       { font-size: 18px; font-weight: 900; color: #ffffff; }
+    .hsub         { font-size: 11px; color: rgba(255,255,255,0.72); margin-top: 4px; font-weight: 700; }
+    .hdate        { font-size: 11px; color: rgba(255,255,255,0.65); font-weight: 700; }
+    .body-white   { background: #ffffff; }
+    .divider      { height: 1px; background: rgba(0,0,0,0.07); }
+    .footer       { padding: 9px 18px; border-top: 1px solid rgba(0,0,0,0.08); font-size: 10px; color: rgba(0,0,0,0.38); display: flex; justify-content: space-between; font-weight: 700; }
+    .sec-title    { padding: 10px 18px 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: rgba(0,0,0,0.42); }
+
+    /* ── Fan Gain Card ── */
+    #fangain { width: 620px; }
+    .stat-row { display: flex; gap: 10px; padding: 12px 18px; }
+    .stat-box { flex: 1; background: rgba(0,0,0,0.04); border-radius: 8px; padding: 12px 14px; text-align: center; border: 1px solid rgba(0,0,0,0.07); }
+    .stat-lbl { font-size: 9px; text-transform: uppercase; letter-spacing: 0.7px; color: rgba(0,0,0,0.42); margin-bottom: 5px; font-weight: 700; }
+    .stat-num { font-size: 20px; font-weight: 800; }
+    .bar-track { height: 8px; background: rgba(0,0,0,0.09); border-radius: 4px; overflow: hidden; margin: 6px 0 2px; }
+    .bar-fill  { height: 100%; border-radius: 4px; }
+
+    /* ── Leaderboard Card ── */
+    #leaderboard { width: 720px; }
+    table { width: 100%; border-collapse: collapse; }
+    th { padding: 6px 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(0,0,0,0.42); border-bottom: 1px solid rgba(0,0,0,0.08); background: #fafafa; text-align: left; }
+    th:first-child { padding-left: 14px; }
+    th:last-child  { padding-right: 14px; }
+    td { padding: 8px 8px; font-size: 12px; font-weight: 700; border-bottom: 1px solid rgba(0,0,0,0.05); }
+    td:first-child { padding-left: 14px; }
+    td:last-child  { padding-right: 14px; }
+    tr:nth-child(odd)  td { background: rgba(240,98,146,0.04); }
+    tr:nth-child(even) td { background: #ffffff; }
+    .podium { display: flex; gap: 8px; padding: 10px 14px 14px; }
+    .podium-card { flex: 1; background: #ffffff; border: 1px solid rgba(0,0,0,0.10); border-radius: 10px; padding: 14px 10px 12px; text-align: center; }
+    .podium-card.center { border-color: rgba(236,64,122,0.30); box-shadow: 0 0 14px rgba(236,64,122,0.12); }
+    .medal { font-size: 28px; margin-bottom: 6px; }
+
+    /* ── Warning Card ── */
+    #warning { width: 520px; }
+    .warn-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: rgba(255,255,255,0.20); border: 1px solid rgba(255,255,255,0.40); border-radius: 20px; font-size: 13px; font-weight: 700; color: #ffffff; margin-bottom: 8px; }
+
+    /* ── Profile Card ── */
+    #profile { width: 660px; }
+    .gains-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; padding: 10px 18px 14px; }
+    .gain-box { background: rgba(0,0,0,0.04); border-radius: 8px; padding: 10px 12px; border: 1px solid rgba(0,0,0,0.07); }
+    .gain-scope { font-size: 9px; color: rgba(0,0,0,0.40); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px; font-weight: 700; }
+    .gain-value { font-size: 19px; font-weight: 800; color: #ec407a; }
+
+    /* ── Milestone Card ── */
+    #milestone { width: 560px; }
+    .ms-center { text-align: center; }
+    .ms-icon { font-size: 42px; line-height: 1; margin-bottom: 8px; }
+    .ms-headline { font-size: 21px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 1px; }
+    .ms-sub { font-size: 13px; color: rgba(255,255,255,0.75); margin-top: 4px; font-weight: 700; }
+    .ms-fans { font-size: 36px; font-weight: 900; color: #ffd700; letter-spacing: -1px; }
+
+    /* ── Name color samples ── */
+    .name-grid { display: flex; flex-wrap: wrap; gap: 8px; padding: 14px 0; }
+    .name-pill { padding: 5px 14px; border-radius: 20px; font-size: 13px; font-weight: 700; border: 1px solid; }
+
+    /* ── Color palette swatches ── */
+    .swatch-grid { display: flex; gap: 10px; flex-wrap: wrap; padding: 14px 0; }
+    .swatch { width: 80px; text-align: center; }
+    .swatch-box { width: 80px; height: 36px; border-radius: 6px; margin-bottom: 4px; border: 1px solid rgba(0,0,0,0.10); }
+    .swatch-lbl { font-size: 9px; color: rgba(0,0,0,0.50); font-weight: 700; letter-spacing: 0.3px; }
+
+    /* ── Gain color demo ── */
+    .gain-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .gain-label { font-size: 12px; width: 80px; color: rgba(0,0,0,0.55); font-weight: 700; }
+    .gain-badge { font-size: 14px; font-weight: 700; padding: 4px 14px; border-radius: 6px; background: rgba(0,0,0,0.04); }
+
+    /* ── Cards grid ── */
+    .cards-grid { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+  </style>
+</head>
+<body>
+
+  <h1>🌸 UmaKraft Report Theme Preview</h1>
+  <p class="subtitle">Pink gradient header · White body · Black bold text · Green/red fan-gain only · Hash-colored trainer names</p>
+
+  <!-- ── COLOUR SYSTEM ── -->
+  <div class="section">
+    <div class="section-title">Colour System</div>
+    <div class="swatch-grid">
+      <div class="swatch">
+        <div class="swatch-box" style="background:linear-gradient(135deg,#f06292,#ec407a)"></div>
+        <div class="swatch-lbl">Header gradient</div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-box" style="background:#ffffff;border:1px solid rgba(0,0,0,0.12)"></div>
+        <div class="swatch-lbl">Body bg</div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-box" style="background:#1a1a1a"></div>
+        <div class="swatch-lbl">Body text</div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-box" style="background:#2e7d32"></div>
+        <div class="swatch-lbl">Fan gain ≥100%</div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-box" style="background:#c62828"></div>
+        <div class="swatch-lbl">Fan gain &lt;100%</div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-box" style="background:#e91e8c"></div>
+        <div class="swatch-lbl">Server leader #1</div>
+      </div>
+    </div>
+
+    <div style="margin-top:8px">
+      <div style="font-size:11px;color:rgba(0,0,0,0.45);margin-bottom:10px;font-weight:700">Green/Red — reserved exclusively for fan-gain quota results</div>
+      <div class="gain-row"><span class="gain-label">≥ 100% quota</span><span class="gain-badge" style="color:#2e7d32">+18.5M ✅</span></div>
+      <div class="gain-row"><span class="gain-label">&lt; 100% quota</span><span class="gain-badge" style="color:#c62828">+8.2M ❌</span></div>
+    </div>
+
+    <div style="margin-top:16px">
+      <div style="font-size:11px;color:rgba(0,0,0,0.45);margin-bottom:10px;font-weight:700">Trainer name colours — deterministic hash, no red/green/pink in palette</div>
+      <div class="name-grid">
+        <span class="name-pill" style="color:#E65100;border-color:#E65100">Oguri Cap</span>
+        <span class="name-pill" style="color:#7B1FA2;border-color:#7B1FA2">Special Week</span>
+        <span class="name-pill" style="color:#1565C0;border-color:#1565C0">Silence Suzuka</span>
+        <span class="name-pill" style="color:#00838F;border-color:#00838F">Tokai Teio</span>
+        <span class="name-pill" style="color:#6A1B9A;border-color:#6A1B9A">Mejiro McQueen</span>
+        <span class="name-pill" style="color:#0277BD;border-color:#0277BD">El Condor Pasa</span>
+        <span class="name-pill" style="color:#e91e8c;border-color:#e91e8c">🏆 Server Leader</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── FAN GAIN CARD ── -->
+  <div class="section">
+    <div class="section-title">Fan Gain Report</div>
+    <div class="card" id="fangain">
+      <div class="accent-bar"></div>
+      <div class="header-grad">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div class="htitle">🏇 Oguri Cap</div>
+          <div class="hdate">2026-07-11</div>
+        </div>
+        <div class="hsub">Sakura Circle · Fan Gain Report · 18.5M fans total</div>
+      </div>
+      <div class="body-white">
+        <div class="sec-title">📅 Daily Progress</div>
+        <div style="padding:6px 18px 14px">
+          <div style="font-size:26px;font-weight:800;color:#2e7d32">+1,850,000</div>
+          <div class="bar-track"><div class="bar-fill" style="width:74%;background:#2e7d32"></div></div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(0,0,0,0.42);font-weight:700">
+            <span>74% of daily target (2.5M)</span><span>650K remaining</span>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="sec-title">📈 Fan Gain Summary</div>
+        <div style="padding:8px 18px 14px;display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:11px;font-weight:700;text-transform:uppercase;color:rgba(0,0,0,0.45);min-width:64px">Daily</span>
+            <div class="bar-track" style="flex:1;margin:0"><div class="bar-fill" style="width:74%;background:#2e7d32"></div></div>
+            <span style="color:#2e7d32;font-weight:700;font-size:13px;min-width:80px;text-align:right">+1.85M (74%)</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:11px;font-weight:700;text-transform:uppercase;color:rgba(0,0,0,0.45);min-width:64px">Weekly</span>
+            <div class="bar-track" style="flex:1;margin:0"><div class="bar-fill" style="width:88%;background:#2e7d32"></div></div>
+            <span style="color:#2e7d32;font-weight:700;font-size:13px;min-width:80px;text-align:right">+12.5M (88%)</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:11px;font-weight:700;text-transform:uppercase;color:rgba(0,0,0,0.45);min-width:64px">Monthly</span>
+            <div class="bar-track" style="flex:1;margin:0"><div class="bar-fill" style="width:61%;background:#c62828"></div></div>
+            <span style="color:#c62828;font-weight:700;font-size:13px;min-width:80px;text-align:right">+18.3M (61%)</span>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="sec-title">🏆 Rankings</div>
+        <div class="stat-row">
+          <div class="stat-box"><div class="stat-lbl">Daily</div><div class="stat-num">#2</div></div>
+          <div class="stat-box"><div class="stat-lbl">Weekly</div><div class="stat-num">#1 🥇</div></div>
+          <div class="stat-box"><div class="stat-lbl">Monthly</div><div class="stat-num">#3</div></div>
+        </div>
+        <div class="divider"></div>
+        <div class="sec-title">👥 Guild Progress Today</div>
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 18px 14px">
+          <div class="bar-track" style="flex:1;margin:0;height:8px"><div class="bar-fill" style="width:65%;background:#2e7d32;height:100%"></div></div>
+          <span style="color:#2e7d32;font-size:13px;font-weight:700">65%</span>
+          <span style="color:rgba(0,0,0,0.42);font-size:11px;font-weight:700">13/20 done</span>
+        </div>
+      </div>
+      <div class="footer"><span>Week: Week 2</span><span>20 days left · uma.moe</span></div>
+    </div>
+  </div>
+
+  <!-- ── LEADERBOARD CARD ── -->
+  <div class="section">
+    <div class="section-title">Leaderboard</div>
+    <div class="card" id="leaderboard">
+      <div class="accent-bar"></div>
+      <div class="header-grad">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div class="htitle">🏆 Monthly Leaderboard</div>
+          <div class="hdate">2026-07-11</div>
+        </div>
+        <div class="hsub">Sakura Circle · quota 30M</div>
+      </div>
+      <div class="body-white">
+        <div class="sec-title" style="padding-bottom:4px">Top 3</div>
+        <div class="podium">
+          <div class="podium-card">
+            <div class="medal">🥈</div>
+            <div style="font-size:11px;color:rgba(0,0,0,0.40);margin-bottom:2px">trainer#2892</div>
+            <div style="font-size:13px;font-weight:700;color:#7B1FA2;margin-bottom:4px">Special Week</div>
+            <div style="font-size:20px;font-weight:800;color:#2e7d32">+27.4M</div>
+          </div>
+          <div class="podium-card center">
+            <div class="medal">🥇</div>
+            <div style="font-size:11px;color:rgba(0,0,0,0.40);margin-bottom:2px">trainer#1031</div>
+            <div style="font-size:13px;font-weight:700;color:#e91e8c;margin-bottom:4px">Oguri Cap</div>
+            <div style="font-size:20px;font-weight:800;color:#2e7d32">+31.2M</div>
+            <div style="margin-top:6px"><span style="font-size:9px;padding:1px 5px;background:rgba(46,125,50,0.1);color:#2e7d32;border:1px solid rgba(46,125,50,0.3);border-radius:3px;font-weight:700">QUOTA MET</span></div>
+          </div>
+          <div class="podium-card">
+            <div class="medal">🥉</div>
+            <div style="font-size:11px;color:rgba(0,0,0,0.40);margin-bottom:2px">trainer#4471</div>
+            <div style="font-size:13px;font-weight:700;color:#1565C0;margin-bottom:4px">Silence Suzuka</div>
+            <div style="font-size:20px;font-weight:800;color:#c62828">+22.1M</div>
+          </div>
+        </div>
+        <div class="sec-title">Rankings</div>
+        <table>
+          <thead><tr>
+            <th>#</th><th>Trainer</th><th>Move</th><th style="text-align:right">Gain</th><th style="text-align:right">vs Quota</th><th>Progress</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td style="color:rgba(0,0,0,0.40)">#4</td>
+              <td style="color:#00838F">Tokai Teio</td>
+              <td style="color:#2e7d32;font-size:10px">⬆2</td>
+              <td style="color:#2e7d32;text-align:right">+20.8M</td>
+              <td style="color:rgba(0,0,0,0.40);text-align:right">-9.2M</td>
+              <td><div class="bar-track" style="min-width:70px;margin:0"><div class="bar-fill" style="width:69%;background:#c62828"></div></div></td>
+            </tr>
+            <tr>
+              <td style="color:rgba(0,0,0,0.40)">#5</td>
+              <td style="color:#6A1B9A">Mejiro McQueen</td>
+              <td style="color:rgba(0,0,0,0.28);font-size:10px">—</td>
+              <td style="color:#c62828;text-align:right">+18.3M</td>
+              <td style="color:rgba(0,0,0,0.40);text-align:right">-11.7M</td>
+              <td><div class="bar-track" style="min-width:70px;margin:0"><div class="bar-fill" style="width:61%;background:#c62828"></div></div></td>
+            </tr>
+            <tr>
+              <td style="color:rgba(0,0,0,0.40)">#6</td>
+              <td style="color:#0277BD">El Condor Pasa</td>
+              <td style="color:#c62828;font-size:10px">⬇1</td>
+              <td style="color:#c62828;text-align:right">+15.9M</td>
+              <td style="color:rgba(0,0,0,0.40);text-align:right">-14.1M</td>
+              <td><div class="bar-track" style="min-width:70px;margin:0"><div class="bar-fill" style="width:53%;background:#c62828"></div></div></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="footer"><span>Sakura Circle · uma.moe</span><span>v3 · 2026-07-11</span></div>
+    </div>
+  </div>
+
+  <!-- ── WARNING CARD ── -->
+  <div class="section">
+    <div class="section-title">Warning Card (DM)</div>
+    <div class="card" id="warning">
+      <div style="height:3px;background:#c62828"></div>
+      <div class="header-grad">
+        <div class="warn-badge">🔴 Critical Warning</div>
+        <div class="htitle" style="font-size:20px">Mejiro McQueen</div>
+        <div class="hdate" style="margin-top:3px">Sakura Circle · 2026-07-11</div>
+      </div>
+      <div class="body-white">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:14px 18px;">
+          <div class="stat-box"><div class="stat-num" style="color:#c62828;font-size:18px">+18.3M</div><div class="stat-lbl">Current Gain</div></div>
+          <div class="stat-box"><div class="stat-num" style="color:rgba(0,0,0,0.45);font-size:18px">+24.0M</div><div class="stat-lbl">Expected Now</div></div>
+          <div class="stat-box"><div class="stat-num" style="color:rgba(0,0,0,0.45);font-size:18px">+11.7M</div><div class="stat-lbl">Still Needed</div></div>
+        </div>
+        <div style="padding:0 18px 14px">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(0,0,0,0.42);margin-bottom:5px;font-weight:700"><span>Daily Progress</span><span>61% of quota</span></div>
+          <div class="bar-track"><div class="bar-fill" style="width:61%;background:#c62828"></div></div>
+        </div>
+        <div style="padding:12px 18px;background:rgba(198,40,40,0.05);border-top:1px solid rgba(198,40,40,0.10);font-size:13px;line-height:1.6;font-weight:700">
+          ⚠️ You are significantly behind the monthly quota. Consider doubling your training effort over the next 3 days to catch up.
+        </div>
+      </div>
+      <div class="footer"><span>UmaKraft Warning System · uma.moe</span><span>2026-07-11</span></div>
+    </div>
+  </div>
+
+  <!-- ── PROFILE CARD ── -->
+  <div class="section">
+    <div class="section-title">Profile Card</div>
+    <div class="card" id="profile">
+      <div class="accent-bar"></div>
+      <div class="header-grad">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div class="htitle">🏇 Special Week</div>
+          <div class="hdate">2026-07-11</div>
+        </div>
+        <div class="hsub" style="display:flex;justify-content:space-between"><span>Sakura Circle · Profile Dashboard</span><span>18.5M fans total</span></div>
+      </div>
+      <div class="body-white">
+        <div class="divider"></div>
+        <div class="sec-title">🗓️ Tracking Info</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);padding:10px 18px 12px">
+          <div style="padding:4px 0"><div style="font-size:10px;color:rgba(0,0,0,0.42);text-transform:uppercase;letter-spacing:0.7px;font-weight:700">Joined</div><div style="font-size:14px;font-weight:700;margin-top:3px">Jan 1, 2025</div></div>
+          <div style="padding:4px 0 4px 14px;border-left:1px solid rgba(0,0,0,0.07)"><div style="font-size:10px;color:rgba(0,0,0,0.42);text-transform:uppercase;letter-spacing:0.7px;font-weight:700">Days Tracked</div><div style="font-size:14px;font-weight:700;margin-top:3px">557 days</div></div>
+          <div style="padding:4px 0 4px 14px;border-left:1px solid rgba(0,0,0,0.07)"><div style="font-size:10px;color:rgba(0,0,0,0.42);text-transform:uppercase;letter-spacing:0.7px;font-weight:700">Report Date</div><div style="font-size:14px;font-weight:700;margin-top:3px">2026-07-11</div></div>
+        </div>
+        <div class="divider"></div>
+        <div class="sec-title">📈 Current Fan Gain</div>
+        <div class="gains-grid">
+          <div class="gain-box"><div class="gain-scope">📅 Daily</div><div class="gain-value">+850K</div></div>
+          <div class="gain-box"><div class="gain-scope">📆 Weekly</div><div class="gain-value">+5.9M</div></div>
+          <div class="gain-box"><div class="gain-scope">🗓️ Monthly</div><div class="gain-value">+18.3M</div></div>
+        </div>
+        <div style="padding:0 18px 12px">
+          <div class="bar-track"><div class="bar-fill" style="width:61%;background:#c62828"></div></div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(0,0,0,0.42);margin-top:3px;font-weight:700"><span>61% of monthly quota (30M)</span></div>
+        </div>
+        <div class="divider"></div>
+        <div class="sec-title">🏆 All-Time Records</div>
+        <div style="display:flex;gap:10px;padding:12px 18px 16px">
+          <div style="flex:1;background:rgba(255,193,7,0.07);border:1px solid rgba(255,193,7,0.30);border-radius:10px;padding:14px;text-align:center">
+            <div style="font-size:24px">💎</div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:rgba(0,0,0,0.42);margin-top:4px;font-weight:700">Highest Monthly</div>
+            <div style="font-size:22px;font-weight:900;color:#E65100;margin-top:2px">+29.8M</div>
+            <div style="font-size:11px;color:rgba(0,0,0,0.45);font-weight:700">Achieved Mar 2026</div>
+          </div>
+          <div style="flex:1;background:rgba(0,0,0,0.04);border:1px solid rgba(0,0,0,0.08);border-radius:10px;padding:14px;text-align:center">
+            <div style="font-size:24px">⭐</div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:rgba(0,0,0,0.42);margin-top:4px;font-weight:700">Lifetime Total</div>
+            <div style="font-size:22px;font-weight:900;color:#1a1a1a;margin-top:2px">+312M</div>
+            <div style="font-size:11px;color:rgba(0,0,0,0.45);font-weight:700">Since joining the circle</div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="sec-title">📊 Yearly Performance</div>
+        <div style="display:flex;gap:10px;padding:6px 18px 14px;flex-wrap:wrap">
+          <div style="flex:1 1 200px;background:rgba(0,0,0,0.04);border:1px solid rgba(0,0,0,0.08);border-radius:10px;padding:14px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+              <span style="font-size:15px;font-weight:800">2025</span>
+              <span style="font-size:9px;font-weight:700;color:rgba(0,0,0,0.40);background:rgba(0,0,0,0.05);border:1px solid rgba(0,0,0,0.12);border-radius:10px;padding:2px 8px">Complete</span>
+            </div>
+            <div style="font-size:24px;font-weight:900;color:#ec407a">+190M</div>
+            <div style="font-size:10px;color:rgba(0,0,0,0.42);margin-bottom:4px;font-weight:700">Jan – Dec 2025 · 12 months</div>
+            <div style="font-size:11px;color:rgba(0,0,0,0.55);font-weight:700">🏆 Best: Aug 2025 — +29.1M</div>
+          </div>
+          <div style="flex:1 1 200px;background:rgba(236,64,122,0.06);border:1px solid rgba(236,64,122,0.30);border-radius:10px;padding:14px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+              <span style="font-size:15px;font-weight:800">2026</span>
+              <span style="font-size:9px;font-weight:700;color:#ec407a;background:rgba(236,64,122,0.12);border:1px solid rgba(236,64,122,0.35);border-radius:10px;padding:2px 8px">● Ongoing</span>
+            </div>
+            <div style="font-size:24px;font-weight:900;color:#ec407a">+122M</div>
+            <div style="font-size:10px;color:rgba(0,0,0,0.42);margin-bottom:4px;font-weight:700">Jan – Jul 2026 · 7 months</div>
+            <div style="font-size:11px;color:rgba(0,0,0,0.55);font-weight:700">🏆 Best: Mar 2026 — +29.8M</div>
+          </div>
+        </div>
+      </div>
+      <div class="footer"><span>Sakura Circle</span><span>/profile · uma.moe circle data</span></div>
+    </div>
+  </div>
+
+  <!-- ── MILESTONE CARD ── -->
+  <div class="section">
+    <div class="section-title">Milestone Card</div>
+    <div class="card" id="milestone">
+      <div style="height:4px;background:linear-gradient(90deg,#f06292,#ec407a,#ffd700)"></div>
+      <div style="padding:20px 22px 16px;background:linear-gradient(135deg,#f06292 0%,#ec407a 100%);text-align:center">
+        <div class="ms-icon">💫</div>
+        <div class="ms-headline">500 Million Fans</div>
+        <div class="ms-sub">🎉 Milestone Reached!</div>
+      </div>
+      <div class="body-white">
+        <div style="text-align:center;padding:18px 22px 8px">
+          <div style="font-size:22px;font-weight:900;color:#7B1FA2">Special Week</div>
+          <div style="font-size:11px;color:rgba(0,0,0,0.42);margin-top:2px;font-weight:700">Sakura Circle · 2026-07-11</div>
+        </div>
+        <div style="text-align:center;padding:10px 22px 14px">
+          <div class="ms-fans">500.00M</div>
+          <div style="font-size:13px;color:rgba(0,0,0,0.45);margin-top:4px;font-weight:700">500,000,000 fans total</div>
+        </div>
+        <div style="display:flex;padding:0 14px 14px;gap:10px">
+          <div class="stat-box"><div class="stat-lbl">This Month</div><div class="stat-num" style="font-size:15px">+18.3M</div></div>
+          <div class="stat-box"><div class="stat-lbl">Circle Rank</div><div class="stat-num" style="font-size:15px;color:#ec407a">#2</div></div>
+          <div class="stat-box"><div class="stat-lbl">Days Active</div><div class="stat-num" style="font-size:15px">557</div></div>
+        </div>
+      </div>
+      <div class="footer"><span>Sakura Circle · uma.moe</span><span>2026-07-11</span></div>
+    </div>
+  </div>
+
+</body>
+</html>

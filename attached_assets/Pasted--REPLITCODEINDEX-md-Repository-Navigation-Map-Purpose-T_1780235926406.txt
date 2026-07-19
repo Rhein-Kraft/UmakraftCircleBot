@@ -1,0 +1,203 @@
+# REPLITCODEINDEX.md
+
+# Repository Navigation Map
+
+## Purpose
+
+This file is the primary navigation guide for the repository.
+
+It is NOT intended to document every function.
+
+Instead, it provides a high-level map that helps locate files, features, commands, database tables, and code flows quickly.
+
+Use this file before searching the repository.
+
+---
+
+# FILE LOCATOR
+
+## Commands
+
+Location:
+commands/
+
+Contains:
+
+* Slash commands
+* Admin commands
+* User commands
+
+Search Here For:
+
+* Command logic
+* Permission checks
+* Command registration
+
+---
+
+## Events
+
+Location:
+events/
+
+Contains:
+
+* Discord event handlers
+
+Search Here For:
+
+* interactionCreate
+* messageCreate
+* ready
+* guildMemberAdd
+* presenceUpdate
+
+---
+
+## Database
+
+Location:
+database/
+
+Contains:
+
+* SQLite database logic
+* Schema definitions
+* Queries
+* Migrations
+
+Search Here For:
+
+* Tables
+* Database updates
+* User records
+* Milestone data
+
+---
+
+## Services
+
+Location:
+services/
+
+Contains:
+
+* Business logic
+* Data processing
+* Sync operations
+
+Search Here For:
+
+* Background tasks
+* Automation
+* Data synchronization
+
+---
+
+## Utilities
+
+Location:
+utils/
+
+Contains:
+
+* Shared helper functions
+
+Search Here For:
+
+* Formatting
+* Validation
+* Logging
+* Reusable helpers
+
+---
+
+# COMMAND INDEX
+
+| Command  | File                | Purpose         |
+| -------- | ------------------- | --------------- |
+| /example | commands/example.js | Example command |
+
+---
+
+# DATABASE INDEX
+
+| Table      | File                   | Purpose            |
+| ---------- | ---------------------- | ------------------ |
+| users      | database/users.js      | User data          |
+| milestones | database/milestones.js | Milestone tracking |
+
+---
+
+# FEATURE FLOW MAP
+
+## User Registration
+
+Command
+→ Database
+→ User Table
+→ Logging
+
+Files:
+
+* commands/register.js
+* database/users.js
+* utils/logger.js
+
+---
+
+## Milestone Processing
+
+Data Sync
+→ Milestone Calculation
+→ Image Generation
+→ Announcement
+
+Files:
+
+* services/dataSync.js
+* services/milestones.js
+* services/milestoneImages.js
+* services/announcement.js
+
+---
+
+# QUICK SEARCH KEYWORDS
+
+Authentication
+→ auth/, users.js
+
+Milestones
+→ milestones.js, milestoneImages.js
+
+Announcements
+→ announcement.js
+
+Logging
+→ logger.js
+
+Commands
+→ commands/
+
+Database
+→ database/
+
+Events
+→ events/
+
+Sync
+→ services/dataSync.js
+
+---
+
+# AI INSTRUCTIONS
+
+Before searching the repository:
+
+1. Read REPLITCODEINDEX.md first.
+2. Use the File Locator to find the correct area.
+3. Use the Command Index for slash commands.
+4. Use the Database Index for schema-related work.
+5. Use the Feature Flow Map to understand how components interact.
+6. Update this file whenever a new feature, command, table, service, or major workflow is added.
+7. Do not document every function; document where functionality lives.

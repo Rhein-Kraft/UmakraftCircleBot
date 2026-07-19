@@ -1,0 +1,258 @@
+# REPLITCODEINDEX.md
+# Repository Navigation Map
+
+## Purpose
+This file is the primary navigation guide for the repository.
+It is NOT intended to document every function.
+Instead it provides a high-level map to locate files, features,
+commands, database tables, and code flows quickly.
+Use this file before searching the repository.
+
+---
+
+# FILE LOCATOR
+
+## Commands
+Location: commands/
+Contains: All 23 slash commands (user + admin)
+Search Here For: Command logic, permission checks, option parsing
+
+## Event Handlers
+Location: handlers/
+Contains: ready, interactionCreate, messageCreate,
+          guildMemberAdd, presenceUpdate
+Search Here For: Discord event responses, message routing,
+                 trainer ID paste detection, welcome flow
+
+## Database
+Location: db/
+Contains: 9 SQLite modules via better-sqlite3, schema
+          definitions, migrations, queries
+Search Here For: Tables, schema updates, user records,
+                 milestone data, trainer data
+
+## Scheduled Tasks
+Location: tasks/
+Contains: All cron jobs via node-cron (33 scheduled tasks)
+Search Here For: Background automation, data sync, milestone
+                 checks, leaderboard posts, attendance, cleanup
+
+## Core Services
+Location: core/
+Contains: config, store (public DB facade), uma.moe API client,
+          channel management, format helpers, log, busyLock,
+          tokenLoader, tally, taskRegistry, health server
+Search Here For: Shared config values, DB access patterns,
+                 uma.moe data fetching, channel resolution
+
+## Timeline
+Location: timeline/
+Contains: Playwright scraper, scheduler, orchestrator
+Search Here For: uma.moe/timeline scraping, event card posting
+
+## Trainer
+Location: trainer/
+Contains: Playwright screenshotter, result leaderboard manager
+Search Here For: Trainer profile screenshots, #result-contribution
+
+## Utilities
+Location: utils/
+Contains: imageReport (canvas/html-to-image), embeds,
+          autoDelete, cardCache, characterData, dmHelpers
+Search Here For: Image generation, embed builders, DM sending,
+                 card data lookup, auto-delete queuing
+
+## Scrapers
+Location: scrapers/
+Contains: Race and racetrack data scrapers
+Search Here For: Race data fetching
+
+## Secrets
+Location: secrets/
+Contains: token_enc.key (Fernet decryption key, committed)
+Search Here For: Token loading chain — see core/tokenLoader.js
+
+---
+
+# COMMAND INDEX
+
+| Command                  | File                          | Permission     | Purpose                                      |
+|--------------------------|-------------------------------|----------------|----------------------------------------------|
+| /admin_setjoindate       | commands/admin_setjoindate.js | ManageGuild    | Manually override a member's circle join date |
+| /admin-sync-cards        | commands/admin_syncCards.js   | Administrator  | Sync support card data from gametora.com     |
+| /admin_sync              | commands/admin_sync.js        | ManageGuild    | Manually trigger uma.moe data sync           |
+| /circle_master           | commands/circle_master.js     | Administrator  | Leader admin tools (day override, milestones)|
+| /fan_gain                | commands/fan_gain.js          | None           | Personal fan gain card (daily/weekly/monthly)|
+| /help                    | commands/help.js              | None           | Interactive command guide                    |
+| /intercircleleaderboard  | commands/intercircleleaderboard.js | None      | Cross-circle fan gain rankings               |
+| /joindate                | commands/joindate.js          | None           | Show when a member joined the circle         |
+| /keep                    | commands/keep.js              | None           | Pin a trainer ID permanently                 |
+| /leaderboard             | commands/leaderboard.js       | None           | Circle-wide top rankings image               |
+| /link                    | commands/link.js              | None           | Connect Discord account to uma.moe trainer   |
+| /search                  | commands/search_trainer.js    | None           | Query trainer database with filters          |
+| /set_fans                | commands/set_fans.js          | ManageGuild    | Set fan requirement per circle and scope     |
+| /set_quota               | commands/set_quota.js         | ManageGuild    | Set daily/weekly/monthly quota               |
+| /set_timezone            | commands/set_timezone.js      | None           | Set personal timezone                        |
+| /status                  | commands/status.js            | None           | Bot health and sync status                   |
+| /store                   | commands/store.js             | None           | Manually save trainer ID (in #uma-store only)|
+| /test_milestone          | commands/test_milestone.js    | ManageGuild    | Test-fire a milestone announcement           |
+| /timeline_post           | commands/timeline_post.js     | None           | Manually trigger timeline update post        |
+| /timeline_setup          | commands/timeline_setup.js    | None           | Configure the timeline channel               |
+| /total_circlefan_gain    | commands/total_circlefan_gain.js | None        | Total fan gain across the whole circle       |
+| /total_fan               | commands/total_fan.js         | None           | Total fan count lookup                       |
+| /unlink                  | commands/unlink.js            | None           | Disconnect Discord from trainer ID           |
+
+---
+
+# DATABASE INDEX
+
+| Table                  | File                    | Purpose                                         |
+|------------------------|-------------------------|-------------------------------------------------|
+| members                | db/storeDb.js           | Circle member records and fan counts            |
+| daily_gains            | db/storeDb.js           | Per-member daily fan gain history               |
+| guild_config           | db/storeDb.js           | Per-guild quota and config values               |
+| bot_state              | db/storeDb.js           | Key-value persistent state (last sync, etc.)    |
+| timezones              | db/storeDb.js           | Per-user timezone preferences                   |
+| command_messages       | db/storeDb.js           | Tracks bot replies for timed auto-deletion      |
+| links                  | db/linksDb.js           | Discord user ID ↔ uma.moe viewer ID mapping    |
+| trainers               | db/trainerDb.js         | Trainer profiles from #uma-store submissions    |
+| trainer_skills         | db/trainerDb.js         | Skills associated with each trainer profile     |
+| milestone_fired        | db/milestoneDb.js       | Fired milestones with exactly-once send state   |
+| special_tier_eligible  | db/milestoneDb.js       | Eligible members for 60M/80M/100M special tiers |
+| onboarding             | db/onboardingDb.js      | New member onboarding and trainer card tracking |
+| attendance             | db/attendanceDb.js      | Daily Discord login records per member          |
+| user_streaks           | db/attendanceDb.js      | Consecutive login streak tracking               |
+| posted_events          | db/timelineCache.js     | Deduplication for timeline event posts          |
+| timeline_state         | db/timelineCache.js     | Timeline scraper run state                      |
+| timeline_messages      | db/timelineCache.js     | Discord message IDs for posted timeline cards   |
+| image_archive_cursors  | db/imageArchiveDb.js    | Per-channel pagination cursors for media archiver|
+| image_archive_hashes   | db/imageArchiveDb.js    | SHA-256 hashes of archived media (deduplication)|
+
+---
+
+# FEATURE FLOW MAP
+
+## Token Loading (startup)
+start.js
+→ core/tokenLoader.js
+→ secrets/token_enc.key (Fernet key)
+→ GitHub Gist (encrypted service account)
+→ Google Drive (encrypted token)
+→ process.env.DISCORD_TOKEN
+→ index.js (dynamic import)
+
+## Data Sync (every 30 min)
+tasks/dataSync.js
+→ core/uma.js (fetch circle members + fan counts)
+→ db/storeDb.js (upsert members + daily_gains)
+→ tasks/milestones.js (trigger milestone checks)
+
+## Milestone Delivery
+tasks/milestones.js
+→ db/milestoneDb.js (check milestone_fired — exactly once)
+→ core/milestoneImages.js (pick image asset)
+→ utils/imageReport.js (render announcement card)
+→ announcement channel (post + optional DM)
+
+## Fan Gain Command (/fan_gain)
+commands/fan_gain.js
+→ core/uma.js (getCircleSnapshot)
+→ db/linksDb.js (resolve Discord → trainer ID)
+→ utils/imageReport.js (renderFanGain → PNG)
+→ interaction reply (auto-deleted after timeout)
+
+## Trainer Store Flow
+handlers/messageCreate.js (detects trainer ID paste in #uma-store)
+→ db/trainerDb.js (upsert trainer + skills)
+→ trainer/screenshotter.js (Playwright → profile PNG)
+→ trainer/trainerLeaderboard.js (update #result-contribution)
+
+## Timeline Scrape-to-Post
+timeline/timelineScheduler.js (cron trigger)
+→ timeline/timeline.js (orchestrator)
+→ timeline/timelineScraper.js (Playwright → event list)
+→ db/timelineCache.js (deduplicate)
+→ utils/imageReport.js (render event cards)
+→ #uma-timeline channel (purge + repost)
+
+## Leaderboard Announcements
+tasks/leaderboardAnnouncements.js
+→ core/uma.js (getCircleSnapshot)
+→ utils/imageReport.js (renderLeaderboard → PNG)
+→ core/channels.js (getLeaderboardChannel)
+→ utils/dm.js (DM top 3 members)
+
+---
+
+# QUICK SEARCH KEYWORDS
+
+Token loading / bot startup
+→ core/tokenLoader.js, start.js, secrets/token_enc.key
+
+Fan gain data / uma.moe API
+→ core/uma.js, tasks/dataSync.js
+
+Milestones / milestone images
+→ tasks/milestones.js, tasks/milestone-tiers.js,
+  core/milestoneImages.js, db/milestoneDb.js,
+  milestone_images/
+
+Leaderboard posts
+→ tasks/leaderboardAnnouncements.js, commands/leaderboard.js,
+  utils/imageReport.js
+
+Trainer profiles / #uma-store
+→ handlers/messageCreate.js, db/trainerDb.js,
+  trainer/screenshotter.js, trainer/trainerLeaderboard.js
+
+Image / card generation
+→ utils/imageReport.js (all PNG rendering lives here)
+
+Discord ID ↔ Trainer ID mapping
+→ db/linksDb.js, commands/link.js, commands/unlink.js
+
+Channel resolution (find/create channels)
+→ core/channels.js, core/channel-utils.js
+
+Slash command registration
+→ core/deploy-commands.js
+
+Attendance / streaks
+→ tasks/attendanceCheck.js, db/attendanceDb.js
+
+Timeline
+→ timeline/, db/timelineCache.js
+
+Scheduled tasks / cron
+→ tasks/index.js (all 33 tasks registered here)
+
+Guild config / quotas
+→ db/storeDb.js (guild_config table), core/store.js,
+  commands/set_fans.js, commands/set_quota.js
+
+Chat archiving
+→ tasks/chatArchiver.js, tasks/imageArchive.js
+
+Database backups
+→ tasks/sqliteBackup.js
+
+Health check endpoint
+→ core/health.js (GET /health, GET /ready on :8080)
+
+---
+
+# AI INSTRUCTIONS
+
+Before searching the repository:
+1. Read REPLITCODEINDEX.md first.
+2. Use the File Locator to find the correct directory.
+3. Use the Command Index for slash command work.
+4. Use the Database Index for any schema-related work.
+5. Use the Feature Flow Map to understand multi-file chains.
+6. Update this file when a new command, table, task, or
+   major workflow is added. Do NOT document every function —
+   document where functionality lives.
+7. replit.md is the authoritative project spec.
+   This file is the navigation map. Both must stay in sync.
+
+Last Updated: 2026-05-31

@@ -1,0 +1,295 @@
+# REPLITCODEINDEX.md
+
+# Repository Knowledge Base & Code Index
+
+## Purpose
+
+REPLITCODEINDEX.md serves as the authoritative repository map and knowledge base for this project.
+
+Its purpose is to provide a centralized, searchable reference for all project components and relationships, allowing developers and AI assistants to quickly locate, understand, and reuse existing code.
+
+This index should always reflect the current state of the repository.
+
+---
+
+## Repository Coverage
+
+This document should track:
+
+### Files
+
+* All repository files
+* File locations and purposes
+
+### Code Components
+
+* Functions
+* Classes
+* Utilities
+* Modules
+* Exports and imports
+
+### Application Structure
+
+* Commands
+* Events
+* Services
+* Middleware
+* Configuration files
+
+### Data Layer
+
+* Database schemas
+* Tables
+* Models
+* Queries
+
+### API Layer
+
+* Routes
+* Endpoints
+* Controllers
+* Request handlers
+
+### Architecture
+
+* Dependencies
+* Feature mappings
+* Cross-file relationships
+
+---
+
+## Search Guide
+
+This index should support discovery by:
+
+* File path
+* File name
+* Function name
+* Class name
+* Command name
+* Event name
+* Database table
+* API endpoint
+* Feature keyword
+* Export name
+* Module name
+
+---
+
+# FILE INDEX
+
+Document every repository file.
+
+Template:
+
+## path/to/file.js
+
+**Purpose**
+
+* Description
+
+**Exports**
+
+* exportOne
+* exportTwo
+
+**Dependencies**
+
+* dependencyA
+* dependencyB
+
+**Features**
+
+* Feature A
+* Feature B
+
+---
+
+# FUNCTION INDEX
+
+Document every major function.
+
+Template:
+
+## functionName()
+
+**File**
+
+* path/to/file.js
+
+**Purpose**
+
+* Description
+
+**Parameters**
+
+* parameterOne
+* parameterTwo
+
+**Returns**
+
+* Return value description
+
+**Used By**
+
+* Related files/functions
+
+---
+
+# CLASS INDEX
+
+Document every class.
+
+Template:
+
+## ClassName
+
+**File**
+
+* path/to/file.js
+
+**Purpose**
+
+* Description
+
+**Methods**
+
+* methodOne()
+* methodTwo()
+
+---
+
+# COMMAND INDEX
+
+Document all commands.
+
+Template:
+
+## command-name
+
+**Location**
+
+* path/to/file.js
+
+**Description**
+
+* Description
+
+**Permissions**
+
+* Required permissions
+
+---
+
+# EVENT INDEX
+
+Document all events.
+
+Template:
+
+## eventName
+
+**Location**
+
+* path/to/file.js
+
+**Purpose**
+
+* Description
+
+---
+
+# DATABASE INDEX
+
+Document all database structures.
+
+Template:
+
+## table_name
+
+**Purpose**
+
+* Description
+
+**Columns**
+
+* id
+* created_at
+* updated_at
+
+**Related Files**
+
+* path/to/file.js
+
+---
+
+# API INDEX
+
+Document all API routes and endpoints.
+
+Template:
+
+## GET /api/example
+
+**Handler**
+
+* path/to/file.js
+
+**Purpose**
+
+* Description
+
+**Authentication**
+
+* Required / Not Required
+
+---
+
+# FEATURE INDEX
+
+Map features to their implementation files.
+
+Template:
+
+## Authentication
+
+**Files**
+
+* src/auth/login.js
+* src/auth/session.js
+
+**Related Database Tables**
+
+* users
+* sessions
+
+---
+
+# AI INSTRUCTIONS
+
+Treat REPLITCODEINDEX.md as the authoritative code map and repository knowledge base.
+
+Before creating, modifying, refactoring, or deleting code:
+
+1. Consult REPLITCODEINDEX.md to locate existing functionality.
+2. Reuse existing functions, classes, utilities, modules, and services whenever possible.
+3. Avoid creating duplicate implementations.
+4. Verify whether similar functionality already exists before generating new code.
+5. Update REPLITCODEINDEX.md whenever files, functions, classes, commands, events, database schemas, API routes, exports, imports, dependencies, or project structures change.
+6. Register new files immediately in the File Index.
+7. Register new functions, classes, commands, events, routes, and database tables immediately in their respective sections.
+8. Remove or update entries when code is deleted, renamed, moved, or refactored.
+9. Keep dependency mappings and feature mappings synchronized with the actual codebase.
+10. Ensure all major project components remain searchable through this index.
+11. Use this file as the primary source of repository discovery and navigation.
+
+Failure to update REPLITCODEINDEX.md after repository changes should be considered an incomplete task.
+
+---
+
+Last Updated:
+YYYY-MM-DD
+
+Repository Version:
+X.Y.Z

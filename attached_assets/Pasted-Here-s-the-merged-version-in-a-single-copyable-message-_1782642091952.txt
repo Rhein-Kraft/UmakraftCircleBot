@@ -1,0 +1,367 @@
+Here's the merged version in a single copyable message block.
+
+# /profile System Enhancement, Historical Synchronization & Discord Avatar Integration
+
+## Objective
+
+Enhance the existing `/profile` command without changing its current architecture.
+
+The existing implementation already supports:
+
+* Profile Image Report
+* Achievements
+* Milestones
+* Completion Streaks
+* Attendance Streaks
+* Rankings
+* Honors
+* Personal Records
+* Progress to Next Milestone
+* Multi-circle Support
+* Historical Backfill Trigger
+
+The goal of this milestone is to transform `/profile` into the permanent historical identity system for every trainer.
+
+---
+
+# Design Philosophy
+
+The local database must become the permanent source of truth.
+
+uma.moe is used only as the external data provider.
+
+Historical data should be imported once, stored permanently, and reused by every future `/profile` request.
+
+The `/profile` command itself should never perform expensive historical requests.
+
+---
+
+# Initial Historical Import
+
+When a trainer is linked for the first time or when historical data is missing:
+
+1. Detect the earliest available month on uma.moe.
+2. Import every available month in chronological order.
+3. Store every month's data locally.
+4. Automatically calculate:
+
+   * Milestones
+   * Achievements
+   * Completion Streaks
+   * Personal Bests
+   * Lifetime Fan Gain
+   * Historical Monthly Statistics
+5. Mark the trainer as fully synchronized.
+
+This is a one-time operation.
+
+---
+
+# Monthly Automatic Synchronization
+
+After the monthly tally has completed, the bot should wait **one day** before synchronizing to ensure the final monthly results on uma.moe are stable.
+
+Workflow
+
+```text
+Monthly Tally Ends
+        ↓
+Wait 1 Day
+        ↓
+Fetch Latest Monthly Results
+        ↓
+Append New Month To Local Database
+        ↓
+Update Milestones
+        ↓
+Update Achievements
+        ↓
+Update Completion Streaks
+        ↓
+Update Personal Records
+        ↓
+Update Lifetime Statistics
+        ↓
+Mark Month As Synchronized
+```
+
+Only the newest month should be imported.
+
+Previously synchronized months must never be processed again.
+
+---
+
+# Local Database Responsibilities
+
+The database becomes the permanent historical archive.
+
+Store permanently:
+
+* Monthly Fan Gain History
+* Lifetime Fan Gain
+* Personal Best Daily Gain
+* Personal Best Weekly Gain
+* Personal Best Monthly Gain
+* Historical Monthly Rankings
+* Milestone History
+* Achievement History
+* Completion Streak History
+* Attendance Statistics
+* Warning Recovery Statistics
+* Profile Grade History
+* Honors
+* Trophy Cabinet
+* Highest Milestone
+* Total Milestones Triggered
+
+---
+
+# Synchronization Protection
+
+Create a synchronization tracking table.
+
+```text
+profile_month_sync
+
+trainer_id
+year
+month
+status
+processed_at
+```
+
+Status values
+
+* pending
+* syncing
+* completed
+* failed
+
+If a month is already marked as completed, skip processing.
+
+---
+
+# Restart Safety
+
+The synchronization system must be restart-safe.
+
+```text
+Restart
+    ↓
+Read Synchronization Table
+    ↓
+Resume Incomplete Trainers
+```
+
+Requirements
+
+* No duplicated history
+* No duplicated milestones
+* No duplicated achievements
+* No duplicated personal records
+* Resume exactly where synchronization stopped
+
+---
+
+# /profile Data Source
+
+The `/profile` command should read only from the local database.
+
+Never fetch historical information directly from uma.moe during profile generation.
+
+Benefits
+
+* Instant profile generation
+* Reduced requests to uma.moe
+* Stable statistics
+* Consistent milestone history
+* Works even if uma.moe is temporarily unavailable
+
+---
+
+# Discord Avatar Integration
+
+The profile should automatically display the linked Discord member's current avatar.
+
+Avatar priority:
+
+1. Linked Discord user's custom avatar
+2. Discord default avatar
+3. Bot placeholder image (only if the Discord user cannot be resolved)
+
+The avatar should **refresh every time `/profile` is generated**, ensuring it always reflects the member's latest Discord profile picture.
+
+Do **not** permanently store avatar images in the database.
+
+Only historical profile statistics should be stored locally.
+
+---
+
+# Profile Header
+
+Display:
+
+* Discord Avatar
+* Discord Display Name
+* Trainer Name
+* Circle Name
+* Profile Grade
+* Current Badge
+* Current Title
+
+Recommended visual styling:
+
+* Circular avatar
+* High-resolution rendering
+* Soft shadow
+* Clean border
+* Milestone-themed glow/frame based on the highest milestone earned
+
+Future cosmetic frames:
+
+* 🥉 Bronze (10M)
+* 🥈 Silver (20M)
+* 🥇 Gold (40M)
+* 💎 Diamond (60M)
+* 👑 Royal (80M)
+* 🌟 Legendary Sparkle Frame (100M)
+
+These effects are cosmetic only.
+
+---
+
+# Existing Features To Preserve
+
+Do not remove or rewrite the current implementation.
+
+Preserve:
+
+* Multi-circle support
+* Trainer autocomplete
+* Discord member lookup
+* Image Report rendering
+* Achievement summary
+* Honors
+* Completion streaks
+* Attendance streaks
+* Current rankings
+* Personal best rankings
+* Progress bar
+* Grade calculation
+* Current badge
+* Current title
+* Warning recovery count
+* Milestone history
+* Highest milestone
+* Trophy cabinet
+* Current status
+* Avatar rendering
+
+---
+
+# New Statistics To Add
+
+## Identity
+
+* Member Since
+* Days Linked
+* Total Months Played
+
+## Progression
+
+* Lifetime Fan Gain
+* Total Milestones Triggered
+* Highest Milestone
+* Fastest Milestone Unlock
+* Next Milestone Progress
+
+## Achievements
+
+* Total Achievements
+* Achievement Completion %
+* Achievement Rarity Breakdown
+* Latest Achievement
+* Next Unlockable Achievement
+
+## Performance
+
+* Personal Best Daily Gain
+* Personal Best Weekly Gain
+* Personal Best Monthly Gain
+* Best Daily Rank
+* Best Weekly Rank
+* Best Monthly Rank
+* Average Monthly Rank
+* Total #1 Finishes
+
+## Consistency
+
+* Current Completion Streak
+* Longest Completion Streak
+* Perfect Weeks
+* Perfect Months
+* Completion Rate
+* Consistency Rating
+
+## Warnings
+
+* Total Warnings
+* Total Recoveries
+* Recovery Rate
+* Active Warning Status
+
+## Contribution
+
+* Lifetime Circle Contribution
+* Circle Contribution Percentage
+* Total Months Active
+
+## Honors
+
+* Circle Veteran
+* Milestone Hunter
+* Perfect Week
+* Perfect Month
+* Top Performer
+* Future Event Titles
+
+---
+
+# Future Expansion
+
+The profile system should be designed to support future features without requiring architectural changes.
+
+Future additions include:
+
+* Badge Collection
+* Achievement Gallery
+* Animated Milestone Effects
+* Seasonal Achievements
+* Profile Themes
+* Prestige Levels
+* Experience Levels
+* Profile Timeline
+* Event Rewards
+* Lifetime Analytics
+* Historical Charts
+
+---
+
+# Final Goal
+
+The `/profile` command should become the permanent identity card of every trainer.
+
+Every generated profile should immediately identify the member through their **current Discord avatar** while showcasing:
+
+* Who the trainer is
+* Their complete historical journey
+* Every milestone earned
+* Every achievement unlocked
+* Their progression through time
+* Their consistency
+* Their personal records
+* Their contribution to the circle
+
+After the initial historical import, the profile should remain automatically updated through the monthly synchronization process, which runs once on the day after each tally period.
+
+The result should be an extremely fast, visually polished, and fully data-driven profile system that permanently preserves every trainer's history while minimizing requests to uma.moe.

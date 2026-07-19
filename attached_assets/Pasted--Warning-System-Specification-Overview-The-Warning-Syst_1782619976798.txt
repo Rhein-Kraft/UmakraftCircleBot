@@ -1,0 +1,491 @@
+# Warning System Specification
+
+## Overview
+
+The Warning System is designed to proactively notify members who are at risk of failing the configured daily fan requirement.
+
+Unlike a simple threshold checker, the system should intelligently evaluate member progress throughout the day while minimizing unnecessary notifications.
+
+The goal is to encourage completion, reduce spam, and provide guild leaders with actionable insights.
+
+---
+
+# Objectives
+
+* Notify members before they fail the daily requirement.
+* Avoid repetitive or unnecessary DMs.
+* Encourage recovery instead of punishment.
+* Provide guild officers with a clear overview of member progress.
+* Keep all notifications consistent with the bot's image-report design.
+
+---
+
+# Warning Levels
+
+The system supports five progressive warning stages.
+
+## 🟢 Safe
+
+Requirements
+
+* Member is progressing normally.
+* No warning is sent.
+
+---
+
+## 🟡 Reminder
+
+Requirements
+
+* Member falls slightly behind the expected pace.
+
+Purpose
+
+A friendly reminder that additional fan gain is needed.
+
+---
+
+## 🟠 Warning
+
+Requirements
+
+* Member is significantly behind schedule.
+
+Purpose
+
+Notify the member that reaching today's target is becoming difficult.
+
+---
+
+## 🔴 Critical
+
+Requirements
+
+* Member is unlikely to reach today's target without immediate action.
+
+Purpose
+
+Urgent notification before the daily tally.
+
+---
+
+## ⚫ Final Reminder
+
+Requirements
+
+* Sent shortly before the daily tally.
+* Member still has not reached the required fan gain.
+
+Purpose
+
+Final opportunity to complete today's target.
+
+---
+
+# Intelligent Progress Calculation
+
+The warning system should not compare only against the final target.
+
+Instead, calculate the member's expected progress based on:
+
+* Current Time
+* Daily Tally Time
+* Configured Daily Fan Target
+
+Example
+
+Daily Target
+
+1,000,000
+
+Current Time
+
+18:00
+
+Expected Progress
+
+750,000
+
+Member Progress
+
+760,000
+
+Status
+
+🟢 On Pace
+
+Even if the member has not yet reached 1M, no warning should be issued because they are progressing as expected.
+
+---
+
+# Warning Cooldown
+
+Prevent repeated notifications.
+
+Rules
+
+* Only one warning may be sent during the configured cooldown period.
+* If the member remains in the same warning level, no additional warning is sent.
+* A new warning is only sent when the warning level changes.
+
+Example
+
+09:00
+
+🟡 Reminder
+
+11:00
+
+Still Reminder
+
+No DM
+
+14:00
+
+Escalated to Warning
+
+🟠 Send DM
+
+16:00
+
+Still Warning
+
+No DM
+
+18:00
+
+Escalated to Critical
+
+🔴 Send DM
+
+---
+
+# Recovery Detection
+
+Members should also receive positive feedback.
+
+If a warned member later completes today's requirement:
+
+Send
+
+🟢 Recovery Report
+
+Message
+
+Congratulations!
+
+You recovered from today's warning and completed your daily fan target.
+
+This notification should only be sent once.
+
+---
+
+# Grace Period
+
+Immediately after the daily reset, warnings should be disabled.
+
+Example
+
+Daily Reset
+
+00:00
+
+Grace Period Ends
+
+06:00
+
+Purpose
+
+Prevent warning members before they have had a reasonable opportunity to play.
+
+Grace period duration should be configurable.
+
+---
+
+# Warning Explanation
+
+Every warning report should explain why the warning was generated.
+
+Display
+
+* Current Fan Gain
+* Expected Fan Gain
+* Remaining Fans
+* Current Warning Level
+* Recommended Action
+
+Example
+
+Current Gain
+
+420,000
+
+Expected Gain
+
+650,000
+
+Difference
+
+-230,000
+
+Remaining
+
+580,000
+
+Status
+
+🔴 Behind Today's Pace
+
+Recommendation
+
+Earn approximately 580,000 additional fans before today's tally.
+
+---
+
+# Fan Gain Protection
+
+Members linked for the first time should not receive warnings.
+
+Rules
+
+* Warning System Disabled
+* Leaderboard Excluded if required by protection policy
+* Baseline fan count recorded
+
+Display
+
+⚪ Newly Linked
+
+Baseline Collection Active
+
+No warnings will be issued today.
+
+Protection automatically expires after the first daily tally.
+
+---
+
+# Warning History
+
+Every warning should be stored.
+
+Store
+
+* Member ID
+* Date
+* Warning Level
+* Timestamp
+* Reason
+* Resolved Status
+
+Example
+
+Date
+
+2026-06-28
+
+Level
+
+🟠 Warning
+
+Resolved
+
+✅
+
+This history enables future analytics and auditing.
+
+---
+
+# Officer Summary
+
+Generate a daily officer report.
+
+Display
+
+🟢 Safe
+
+83
+
+🟡 Reminder
+
+12
+
+🟠 Warning
+
+8
+
+🔴 Critical
+
+3
+
+⚫ Final Reminder
+
+1
+
+Total Members
+
+107
+
+Completion
+
+78%
+
+This report should also be generated as an Image Report.
+
+---
+
+# Warning Settings
+
+Add an administrator command.
+
+```text
+/warningsettings
+```
+
+Configurable options
+
+* Reminder Threshold
+* Warning Threshold
+* Critical Threshold
+* Final Reminder Time
+* Grace Period Duration
+* Warning Cooldown
+* Enable Recovery Messages
+* Enable Final Reminder
+* Enable DM Warnings
+* Enable Officer Summary
+
+Settings are stored per Discord server.
+
+---
+
+# Image Report Design
+
+Every warning is generated as an image.
+
+The report should display:
+
+Header
+
+* Bot Logo
+* Server Name
+* Warning Level
+
+Body
+
+* Trainer Name
+* Current Fan Gain
+* Expected Fan Gain
+* Remaining Fans
+* Progress Bar
+* Recommendation
+
+Footer
+
+* Last Updated
+* Data Source (uma.moe)
+* Bot Version
+
+---
+
+# Future Enhancements
+
+## Smart Warning Prediction
+
+Estimate whether the member is likely to complete today's target based on historical averages.
+
+Display
+
+Completion Probability
+
+92%
+
+This should only be implemented after sufficient historical data exists.
+
+---
+
+## Completion Streak Integration
+
+Integrate the future Fan Gain Completion Streak.
+
+Members with long streaks may receive softer reminders before escalation.
+
+---
+
+## Performance Grade Integration
+
+Combine warning status with the Performance Grade system.
+
+Example
+
+Grade
+
+B
+
+Status
+
+🟠 Warning
+
+---
+
+## Officer Dashboard
+
+Create an officer analytics dashboard displaying
+
+* Warning Distribution
+* Most Improved Members
+* Frequent Warning Recipients
+* Completion Trends
+* Historical Warning Statistics
+
+---
+
+# Database Requirements
+
+Create a dedicated warning table.
+
+Suggested fields
+
+* Warning ID
+* Discord User ID
+* Trainer ID
+* Warning Level
+* Warning Reason
+* Current Gain
+* Expected Gain
+* Remaining Fans
+* Warning Timestamp
+* Resolved Timestamp
+* Warning Status
+* Recovery Sent
+* Cooldown Expiration
+
+Avoid storing warning information inside unrelated tables.
+
+---
+
+# Design Principles
+
+* Never spam members.
+* Escalate warnings only when necessary.
+* Reward recovery with positive feedback.
+* Base all calculations on verified fan gain data.
+* Make every warning informative and actionable.
+* Generate every notification as an Image Report.
+* Ensure all thresholds are configurable.
+* Keep the system fair, transparent, and maintainable.
+
+---
+
+# Milestone Goal
+
+The Warning System should evolve from a simple notification feature into an intelligent member assistance system.
+
+At any point during the day, members should clearly understand:
+
+* Their current progress.
+* Whether they are on pace.
+* Why they received a warning.
+* How many fans remain.
+* What action is required to complete today's target.
+
+Guild officers should also have access to clear warning summaries, allowing them to monitor guild performance efficiently while minimizing unnecessary manual intervention.

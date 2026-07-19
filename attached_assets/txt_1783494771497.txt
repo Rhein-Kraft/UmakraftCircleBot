@@ -1,0 +1,136 @@
+# Codebase Feature Directory Plan
+
+## The Pattern (same as `umamoe/`)
+
+Move files that share the same feature into a dedicated directory.
+Leave a one-liner **shim** at the original path so zero callers break:
+
+```js
+// Original path (e.g. tasks/milestones.js) becomes:
+export * from '../milestone/milestones.js';
+```
+
+---
+
+## Proposed Feature Directories
+
+### 1. `milestone/`
+All milestone logic in one place.
+
+| From | To |
+|---|---|
+| `tasks/milestones.js` | `milestone/milestones.js` |
+| `tasks/milestone-tiers.js` | `milestone/tiers.js` |
+| `tasks/milestoneCleanup.js` | `milestone/cleanup.js` |
+| `tasks/milestoneWinners.js` | `milestone/winners.js` |
+| `db/milestoneDb.js` | `milestone/db.js` |
+| `core/milestoneEval.js` | `milestone/eval.js` |
+| `core/milestoneImages.js` | `milestone/images.js` |
+| `utils/milestoneNotifier.js` | `milestone/notifier.js` |
+
+---
+
+### 2. `warnings/`
+Fan warning + deficit enforcement system.
+
+| From | To |
+|---|---|
+| `db/warningDb.js` | `warnings/db.js` |
+| `tasks/warningEngine.js` | `warnings/engine.js` |
+| `tasks/dailyFanWarning.js` | `warnings/daily.js` |
+| `tasks/weeklyWarning.js` | `warnings/weekly.js` |
+| `tasks/monthlyWarning.js` | `warnings/monthly.js` |
+| `core/fanDeficitApi.js` | `warnings/fanDeficitApi.js` |
+| `tasks/fanDeficitImageReport.js` | `warnings/imageReport.js` |
+
+---
+
+### 3. `attendance/`
+Login tracking and streak logic.
+
+| From | To |
+|---|---|
+| `db/attendanceDb.js` | `attendance/db.js` |
+| `tasks/attendanceCheck.js` | `attendance/check.js` |
+
+---
+
+### 4. `onboarding/`
+New member welcome and card submission flow.
+
+| From | To |
+|---|---|
+| `db/onboardingDb.js` | `onboarding/db.js` |
+| `tasks/onboardingReminder.js` | `onboarding/reminder.js` |
+| `handlers/onboardingHandler.js` | `onboarding/handler.js` |
+
+---
+
+### 5. `archive/`
+Chat archiving, media preservation, and DB backups.
+
+| From | To |
+|---|---|
+| `tasks/chatArchiver.js` | `archive/chat.js` |
+| `tasks/imageArchive.js` | `archive/images.js` |
+| `db/imageArchiveDb.js` | `archive/db.js` |
+| `tasks/sqliteBackup.js` | `archive/sqliteBackup.js` |
+
+---
+
+### 6. `links/`
+Discord User ID ↔ Trainer ID mapping.
+
+| From | To |
+|---|---|
+| `db/linksDb.js` | `links/db.js` |
+| `repositories/linkRepository.js` | `links/repository.js` |
+
+---
+
+### 7. `leaderboard/`
+Leaderboard announcements and snapshots.
+
+| From | To |
+|---|---|
+| `tasks/leaderboardAnnouncements.js` | `leaderboard/announcements.js` |
+| `tasks/interCircleAnnouncements.js` | `leaderboard/interCircle.js` |
+| `db/leaderboardSnapshotDb.js` | `leaderboard/snapshotDb.js` |
+
+---
+
+### 8. `achievements/`
+Daily achievement tracking.
+
+| From | To |
+|---|---|
+| `db/achievementDb.js` | `achievements/db.js` |
+| `tasks/dailyAchievement.js` | `achievements/daily.js` |
+
+---
+
+## Directories to Leave As-Is
+
+| Directory | Reason |
+|---|---|
+| `commands/` | Command loader scans this folder by name — reorganizing risks the loader |
+| `db/migrations.js` | Cross-cutting; used by every DB module at boot |
+| `core/` (infra files) | `config.js`, `log.js`, `format.js`, `health.js`, `channels.js` etc. are infrastructure used everywhere — no clean feature cluster |
+| `scripts/` | Dev/admin CLI tools; flat is fine |
+| `handlers/` | Already has `handlers/features/` subfolder; event handlers stay here |
+| `utils/imageReport*.js` | Shared rendering engine used by many features — not feature-specific |
+
+---
+
+## Recommended Order (lowest risk → highest)
+
+1. `attendance/` — smallest, 2 files, fewest callers
+2. `achievements/` — small, self-contained
+3. `archive/` — no cross-feature deps
+4. `onboarding/` — cohesive, few callers
+5. `links/` — needs care (many commands import linksDb)
+6. `leaderboard/` — moderate callers
+7. `warnings/` — largest task cluster, needs careful import tracing
+8. `milestone/` — most complex (milestone-tiers imported by many files)
+
+Each step: read destination files → fix internal imports → write to new path → replace original with shim → verify bot starts clean.

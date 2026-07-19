@@ -1,0 +1,225 @@
+# REPLITCLEANUPREPORT.md
+
+# Repository Cleanup & Health Report
+
+## Purpose
+
+This file tracks potential inefficiencies, unused code, duplication risks, and performance-heavy modules.
+
+It is **not a strict truth source** — it is a **candidate analysis report**.
+
+Because this is an event-driven system (Discord bot + schedulers + scrapers), many modules may appear unused but are actually triggered indirectly.
+
+---
+
+# ⚠️ IMPORTANT CONTEXT (READ FIRST)
+
+This codebase includes:
+
+* Discord event-driven handlers (not directly called)
+* Scheduled cron tasks (triggered by scheduler, not imports)
+* Manual scripts (run via CLI, not imported)
+* Playwright-based scrapers (run on demand)
+* Dynamic task registry loading
+
+👉 Therefore:
+**“Not imported” ≠ “unused”**
+
+---
+
+# UNUSED OR ORPHANED FILES (CANDIDATES ONLY)
+
+Files listed here are NOT confirmed unused — only not statically referenced.
+
+## scripts/ (Manual Execution Tools — NOT ORPHANS)
+
+These are intentionally standalone utilities:
+
+* scripts/generateDocs.js — documentation generator
+* scripts/postQolTimeline.js — one-time timeline post tool
+* scripts/postUpdate.js — manual update trigger
+* scripts/install-hooks.js — git hook installer
+* scripts/setCircle2Quotas.js — one-time configuration script
+
+👉 Status: KEEP (manual tools)
+
+---
+
+## utils/ (Requires Verification)
+
+* utils/imageReport-browser.js — possible legacy/browser build variant
+* utils/resumeCard.js — unknown runtime usage
+* utils/skillScraper.js — scraper module, verify cron/manual usage
+
+---
+
+# POSSIBLE DUPLICATE OR LEGACY LOGIC
+
+| Module A        | Module B | Notes                                  |
+| --------------- | -------- | -------------------------------------- |
+| (none detected) |          | Codebase is modular and well separated |
+
+---
+
+# HEAVY / PERFORMANCE-IMPACTING MODULES
+
+| File                        | Reason                                   | Recommendation             |
+| --------------------------- | ---------------------------------------- | -------------------------- |
+| trainer/screenshotter.js    | Playwright rendering (high CPU + memory) | Lazy load / cache output   |
+| timeline/timelineScraper.js | Frequent scraping + browser automation   | Batch execution / throttle |
+| core/uma.js                 | External API dependency                  | Add caching layer          |
+
+---
+
+# LEGACY OR DEPRECATED CODE
+
+| File                        | Status                    | Notes                        |
+| --------------------------- | ------------------------- | ---------------------------- |
+| scripts/setCircle2Quotas.js | One-time migration script | Likely already executed      |
+| scripts/postUpdate.js       | Manual tool               | Keep unless workflow removed |
+
+---
+
+# LOW USAGE FEATURES (UNVERIFIED WITHOUT TELEMETRY)
+
+Cannot be reliably determined without runtime logging.
+
+Recommendation:
+Add usage counters per command + event triggers.
+
+---
+
+# NPM DEPENDENCY CLEANUP
+
+Run periodically:
+
+```bash
+npm audit
+npx depcheck
+```
+
+Check for:
+
+* unused packages
+* duplicated functionality
+* outdated dependencies
+
+---
+
+# CIRCULAR DEPENDENCY CHECK
+
+No circular imports detected at architecture level.
+
+Risk level: LOW
+
+---
+
+# ⚠️ UNREGISTERED COMMANDS (HIGH PRIORITY CHECK)
+
+Commands that exist in `/commands` but may not be registered in runtime loader or deploy system:
+
+* Verify against core/deploy-commands.js
+* Verify against bot command loader (index/start file)
+
+Mismatch risk:
+
+* file exists ≠ active command
+* file exists ≠ registered in Discord API
+
+---
+
+# 📊 RUNTIME ACTIVITY REPORT (MISSING PIECE)
+
+## Purpose
+
+This section tracks what actually runs in production.
+
+Static analysis cannot detect runtime usage in:
+
+* cron jobs
+* event handlers
+* dynamic imports
+* CLI scripts
+* Playwright workflows
+
+---
+
+## Recently Active Systems
+
+Tracked via logs (if enabled):
+
+### Scheduled Tasks
+
+* dataSync.js → runs every 30 min
+* milestones.js → triggered by sync pipeline
+* leaderboardAnnouncements.js → scheduled posts
+
+### Event Handlers
+
+* interactionCreate → active
+* messageCreate → active
+* ready → startup trigger
+
+---
+
+## Frequently Used Commands (example tracking)
+
+* /fan_gain
+* /leaderboard
+* /link
+* /status
+
+---
+
+## Rarely Used / Unknown Usage
+
+Requires telemetry:
+
+* no command usage logs available yet
+
+---
+
+## Never-Executed Risk (ONLY if telemetry exists)
+
+Cannot determine without runtime logging system.
+
+---
+
+## Recommendation
+
+Add lightweight usage tracking:
+
+* log command execution counts
+* log scheduled task runs
+* log event trigger frequency
+
+Store in:
+
+* db/activityLog.js OR bot_state table
+
+---
+
+# FINAL RECOMMENDATION SUMMARY
+
+## SAFE TO IGNORE
+
+* scripts/ being flagged as unused
+* low-usage feature guesses without telemetry
+
+## REAL ACTION ITEMS
+
+* verify utils/imageReport-browser.js usage
+* verify utils/resumeCard.js usage
+* verify utils/skillScraper.js usage
+* confirm command registration completeness
+
+## HIGH VALUE IMPROVEMENT
+
+* add runtime activity logging system
+* track real execution frequency of commands/tasks/events
+
+---
+
+# LAST UPDATED
+
+2026-05-31

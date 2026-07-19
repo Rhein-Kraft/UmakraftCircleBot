@@ -1,0 +1,415 @@
+# Milestone Summary — `/fangain` Dashboard
+
+## Objective
+
+Transform `/fangain` into the flagship command of the bot by providing a professional image-based dashboard that instantly answers:
+
+> **"How am I performing today?"**
+
+The dashboard should prioritize actionable information while remaining clean, mobile-friendly, and fully data-driven.
+
+---
+
+# Current Architecture
+
+The existing bot already provides a strong foundation:
+
+* Modular command system
+* Repository pattern
+* Database abstraction
+* Scheduler / dataSync
+* Image report rendering
+* Chromium HTML rendering
+* Leaderboards
+* Fan gain tracking
+* Discord slash commands
+
+This milestone focuses on extending the current architecture rather than rebuilding it.
+
+---
+
+# Phase 0 — Data Foundation
+
+Before expanding analytics, verify the reliability of the underlying data.
+
+Tasks:
+
+* Verify dataSync correctly stores daily snapshots.
+* Validate Daily / Weekly / Monthly fan gain calculations.
+* Ensure Fan Gain Protection correctly initializes new links.
+* Verify scheduler reliability after bot restarts.
+* Optimize database indexes for leaderboard performance.
+* Define snapshot retention policy.
+
+Goal:
+
+A reliable historical dataset that future analytics can safely depend on.
+
+---
+
+# Phase 1 — `/fangain` Dashboard
+
+Default command:
+
+```text
+/fangain
+```
+
+Generates a single Image Report containing:
+
+## Header
+
+* Bot Logo (or Bot Name)
+* Discord Server
+* Discord Member
+* Trainer Name
+* Current Total Fans
+* Last Updated
+
+---
+
+## Daily Progress
+
+* Today's Fan Gain
+* Daily Target
+* Remaining Fans
+* Progress Percentage
+* Progress Bar
+* Status
+
+Status Types
+
+🟢 Completed
+
+🟡 On Pace
+
+🔴 Behind
+
+---
+
+## Fan Gain Summary
+
+* Daily Gain
+* Weekly Gain
+* Monthly Gain
+
+---
+
+## Rankings
+
+* Daily Rank
+* Weekly Rank
+* Monthly Rank
+
+---
+
+## Competition
+
+Display:
+
+* Nearest competitor
+* Fan gap
+
+If Rank #1
+
+Display:
+
+🏆 Currently First Place
+
+---
+
+## Trend Analysis
+
+Compare:
+
+Today's gain
+
+vs
+
+Yesterday's gain
+
+Display:
+
+📈 Increase %
+
+or
+
+📉 Decrease %
+
+---
+
+## Guild Statistics
+
+Display:
+
+* Members Completed Today
+* Completion Percentage
+
+---
+
+## Footer
+
+* Report Generated Time
+* Data Source (uma.moe)
+* Bot Version
+
+---
+
+# Autocomplete Reports
+
+## Daily
+
+Display:
+
+* Detailed Daily Statistics
+* Daily Performance Breakdown
+* Daily Comparison
+
+---
+
+## Weekly
+
+Display:
+
+* Seven-Day Fan Gain Chart
+* Daily Fan Gain Breakdown
+* Weekly Analytics
+
+Charts generated from stored daily snapshots.
+
+---
+
+## Monthly
+
+Display:
+
+* Monthly Fan Gain Chart
+* Weekly Breakdown
+* Monthly Analytics
+
+Charts generated from stored daily snapshots.
+
+---
+
+# Phase 2 — Analytics Expansion
+
+The following features require new database schema or historical tracking.
+
+## Fan Gain Completion Streak
+
+Track consecutive days a member reaches the configured daily target.
+
+Requires:
+
+* Current Streak
+* Longest Streak
+* Last Completion Date
+
+---
+
+## Seven-Day Completion Rate
+
+Display:
+
+Last 7 Days
+
+✅ ✅ ❌ ✅ ✅ ✅ ✅
+
+Completion Rate
+
+86%
+
+Requires historical completion records.
+
+---
+
+## Personal Best Daily Fan Gain
+
+Track highest recorded daily gain.
+
+Display:
+
+* Personal Best
+* Difference required to beat the record
+
+Requires:
+
+* Personal Best Daily Gain
+* Personal Best Date
+
+---
+
+## Achievement System
+
+Automatic achievements.
+
+Examples:
+
+* 🏆 Daily Goal Completed
+* 🔥 7-Day Streak
+* 🔥 30-Day Streak
+* ⭐ Top 10 Today
+* 🥇 Daily #1
+* 💎 New Personal Best
+* 🚀 Fastest Completion Today
+
+---
+
+## Historical Analytics
+
+Generate reports for:
+
+* Last 7 Days
+* Last 30 Days
+* Average Daily Gain
+* Best Week
+* Best Month
+* Monthly Growth %
+
+---
+
+## Advanced Charts
+
+Generate using HTML/CSS rendered through Chromium.
+
+Supported:
+
+* 7-Day Fan Gain
+* 30-Day Fan Gain
+* Weekly Comparison
+* Monthly Growth
+* Personal Performance Trend
+
+---
+
+## Guild Analytics
+
+Display:
+
+* Average Daily Fan Gain
+* Highest Fan Gain Today
+* Lowest Fan Gain Today
+* Members Completed
+* Members Remaining
+* Completion Percentage
+* Average Completion Time
+* Guild Performance Trend
+
+---
+
+## Personal Statistics
+
+Display:
+
+* Average Daily Gain
+* Average Weekly Gain
+* Average Monthly Gain
+* Highest Rank Achieved
+* Days Since Linking
+* Total Lifetime Fan Gain Tracked
+
+---
+
+## Performance Grade
+
+Automatically calculate:
+
+S+
+
+S
+
+A
+
+B
+
+C
+
+D
+
+Based on:
+
+* Daily Rank
+* Daily Target Completion
+* Overall Performance
+
+---
+
+## Daily Guild Recap
+
+Automatically post after daily tally.
+
+Display:
+
+* Members Completed
+* Completion Rate
+* Highest Fan Gain
+* Most Improved Member
+* Average Fan Gain
+* New Personal Bests
+* Generation Time
+
+---
+
+# Technical Constraints
+
+Confirmed limitations:
+
+## Hourly Progress Chart
+
+Not feasible.
+
+Reason:
+
+uma.moe does not expose hourly fan gain history.
+
+Instead, use stored daily snapshots for weekly and monthly visualizations.
+
+---
+
+## Fan Gain Streak
+
+Cannot reuse the existing Discord login streak.
+
+Requires a separate completion tracking system.
+
+---
+
+## Completion Rate
+
+Requires historical daily completion records.
+
+---
+
+## Personal Best
+
+Requires new database columns and update logic.
+
+---
+
+# Design Principles
+
+* Every bot response is an Image Report.
+* Never display statistics that cannot be verified.
+* Prioritize actionable information over excessive detail.
+* Keep the default dashboard concise.
+* Reserve advanced analytics for autocomplete reports.
+* Build all future features on reliable historical snapshot data.
+* Ensure all analytics remain accurate, consistent, and maintainable.
+
+---
+
+# Milestone Goal
+
+Deliver a polished `/fangain` dashboard that becomes the primary command members use every day.
+
+The report should immediately communicate:
+
+* Current progress
+* Target completion
+* Daily, Weekly, and Monthly fan gain
+* Rankings
+* Competition
+* Performance trends
+* Guild progress
+
+Future milestones will expand this foundation into a complete analytics platform featuring achievements, historical statistics, advanced charts, and automated guild reporting.

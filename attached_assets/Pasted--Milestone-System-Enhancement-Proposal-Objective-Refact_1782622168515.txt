@@ -1,0 +1,397 @@
+# Milestone System Enhancement Proposal
+
+## Objective
+
+Refactor and enhance the existing milestone system while preserving its current restart-safe architecture.
+
+**Target only these four files:**
+
+* `tasks/milestones.js`
+* `tasks/milestoneWinners.js`
+* `tasks/milestoneCleanup.js`
+* `tasks/milestone-tiers.js`
+
+The current milestone architecture is already production-ready with claim protection, retry logic, restart safety, cleanup scheduling, and modular notification handling. The purpose of this milestone is **not to rewrite the system**, but to enrich it with additional metadata and future-proof capabilities while maintaining backward compatibility.
+
+---
+
+# Enhancement 1 — Visual Theme Metadata
+
+Every milestone tier should define its own visual identity.
+
+Instead of hardcoding colors and styling inside the image renderer, each tier should expose theme metadata.
+
+Example:
+
+```js
+theme: {
+    accentColor: "#FFD700",
+    secondaryColor: "#FFF3B0",
+    background: "legend_gold",
+    border: "gold_frame",
+    textColor: "#FFFFFF"
+}
+```
+
+Supported themes may include:
+
+* Bronze
+* Silver
+* Gold
+* Platinum
+* Diamond
+* Rainbow
+* Legendary
+
+Benefits
+
+* Cleaner renderer
+* Data-driven styling
+* Easier future redesigns
+* Automatic image theming
+* Supports seasonal themes without modifying rendering logic
+
+Rendering Flow
+
+```
+milestone-tiers.js
+        ↓
+Theme Metadata
+        ↓
+Image Renderer
+        ↓
+Automatic Theme Selection
+```
+
+---
+
+# Enhancement 2 — Animation & Visual Effects
+
+Each milestone should define optional visual effects for generated milestone images.
+
+Example metadata:
+
+```js
+effects: {
+    entrance: "sparkleBurst",
+    particles: "goldSparkles",
+    glow: true,
+    confetti: true,
+    shine: "legendary",
+    badgeAnimation: "pulse"
+}
+```
+
+Supported Effects
+
+Basic
+
+* Sparkle
+* Confetti
+* Glow
+* Shine
+
+Advanced
+
+* Gold Sparkles
+* Diamond Particles
+* Rainbow Aura
+* Floating Stars
+* Golden Dust
+* Shooting Sparkles
+
+Legend Tier
+
+* Legendary Aura
+* Crown Glow
+* Rotating Light Rays
+* Gold Sparkle Burst
+
+Rendering Flow
+
+```
+Tier Selected
+      ↓
+Load Effect Metadata
+      ↓
+Apply Effects
+      ↓
+Generate Final Image
+```
+
+Benefits
+
+* Higher milestones feel more rewarding.
+* Effects are controlled entirely by metadata.
+* Renderer remains generic.
+* Future HTML/CSS + Chromium rendering is supported.
+* No milestone logic changes required when adding new effects.
+
+---
+
+# Enhancement 3 — Achievement & Badge Metadata
+
+Milestones should automatically define achievements for future profile systems.
+
+Example
+
+```js
+achievement: {
+    id: "legend_100m",
+    badge: "gold_crown",
+    rarity: "Legendary",
+    title: "100 Million Legend",
+    description: "Awarded for reaching 100 million monthly fans."
+}
+```
+
+Supported rarities
+
+* Common
+* Rare
+* Epic
+* Mythic
+* Legendary
+
+Future integration
+
+* /profile
+* /fangain
+* /leaderboard
+* Achievement Gallery
+* Member Profile Cards
+
+Example display
+
+```
+👑 100 Million Legend
+
+⭐ Legendary Badge
+
+🏆 Achievement Unlocked
+```
+
+Benefits
+
+* Permanent achievements
+* Consistent badge management
+* Future-ready profile integration
+* No additional hardcoded mappings
+
+---
+
+# Enhancement 4 — Flexible Requirement System
+
+Replace a single threshold with a flexible requirement object.
+
+Current
+
+```js
+threshold: 60000000
+```
+
+Future
+
+```js
+requirements: {
+    monthlyFans: 60000000,
+    weeklyFans: null,
+    dailyFans: null,
+    minimumRank: null,
+    completionStreak: null,
+    attendanceDays: null,
+    specialEvent: null
+}
+```
+
+Supported future requirements
+
+* Monthly Fans
+* Weekly Fans
+* Daily Fans
+* Completion Streak
+* Attendance
+* Leaderboard Rank
+* Seasonal Events
+* Guild Anniversary Events
+* Event Participation
+
+Evaluation Flow
+
+```
+Evaluate Requirements
+          ↓
+Requirements Met?
+          ↓
+Claim Milestone
+          ↓
+Generate Image
+          ↓
+Notifications
+```
+
+Benefits
+
+* Easily supports future milestone types.
+* Eliminates milestone-specific logic.
+* Makes milestone evaluation entirely data-driven.
+* Future-proofs the milestone engine.
+
+---
+
+# Architecture Improvements
+
+The current architecture should remain intact.
+
+```
+Scheduler
+      ↓
+Circle Snapshot
+      ↓
+Winner Selection
+      ↓
+Claim Database Record
+      ↓
+Generate Image
+      ↓
+Channel Announcement
+      ↓
+Member DM
+      ↓
+Leader DM
+      ↓
+Retry Failed Steps
+      ↓
+Store Message IDs
+      ↓
+Automatic Cleanup
+```
+
+The enhancements above should extend this architecture without changing its behavior.
+
+---
+
+# Additional Refactoring Recommendations
+
+## Shared Utilities
+
+Move duplicated helper functions such as `shuffle()` into a shared utility module.
+
+Example
+
+```
+core/random.js
+
+shuffle()
+
+weightedShuffle()
+
+randomChoice()
+```
+
+---
+
+## Database Optimization
+
+Avoid repeated database lookups inside loops.
+
+Instead
+
+* Load milestone records once.
+* Cache them in memory.
+* Perform O(1) lookups using Maps or Sets.
+
+This improves scalability for larger circles.
+
+---
+
+## Event Metadata
+
+Future milestone events should expose richer information.
+
+Example
+
+```js
+{
+    trainerId,
+    tier,
+    position,
+    qualifiedAt,
+    monthlyGain,
+    selectionReason
+}
+```
+
+This enables richer analytics and easier debugging.
+
+---
+
+## Configurable Cleanup
+
+Instead of permanently deleting milestone announcements after 24 hours, make the retention period configurable.
+
+Suggested options
+
+* Never Delete
+* 12 Hours
+* 24 Hours
+* 48 Hours
+* 7 Days
+
+---
+
+## Generic Notification Framework (Future)
+
+The milestone system already contains an excellent notification pipeline.
+
+Future systems (Warnings, Achievements, Events, Seasonal Rewards) should reuse this architecture instead of creating independent implementations.
+
+Shared flow
+
+```
+Evaluate
+     ↓
+Claim
+     ↓
+Generate Image
+     ↓
+Send Notifications
+     ↓
+Retry Failed Steps
+     ↓
+Cleanup
+```
+
+This reduces duplicated code while preserving restart safety.
+
+---
+
+# Important Notes
+
+* Preserve the existing database schema whenever possible.
+* Maintain backward compatibility.
+* Preserve restart-safe behavior.
+* Preserve retry behavior.
+* Preserve silent boot claim logic.
+* Preserve special winner selection.
+* Preserve cleanup scheduling.
+* Do not change existing milestone behavior unless required by these enhancements.
+* New metadata should be optional so existing milestone tiers continue to function.
+
+---
+
+# Final Goal
+
+The milestone system should evolve from a reliable notification system into a fully metadata-driven achievement engine.
+
+By completing these enhancements, the four milestone-related files will become the foundation for future systems such as:
+
+* Achievement System
+* Badge System
+* Animated Image Reports
+* Profile Cards
+* Seasonal Events
+* Event Rewards
+* Future Analytics
+
+while keeping the existing milestone architecture clean, modular, restart-safe, and highly maintainable.

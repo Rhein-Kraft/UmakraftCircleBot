@@ -1,0 +1,322 @@
+{
+  "1001": {
+    "en_name": "Special Week",
+    "jp_name": "スペシャルウィーク",
+    "slug": "special-week"
+  },
+  "1002": {
+    "en_name": "Silence Suzuka",
+    "jp_name": "サイレンススズカ",
+    "slug": "silence-suzuka"
+  },
+  "1003": {
+    "en_name": "Tokai Teio",
+    "jp_name": "トウカイテイオー",
+    "slug": "tokai-teio"
+  },
+  "1004": {
+    "en_name": "Maruzensky",
+    "jp_name": "マルゼンスキー",
+    "slug": "maruzensky"
+  },
+  "1005": {
+    "en_name": "Fuji Kiseki",
+    "jp_name": "フジキセキ",
+    "slug": "fuji-kiseki"
+  },
+  "1007": {
+    "en_name": "Gold Ship",
+    "jp_name": "ゴールドシップ",
+    "slug": "gold-ship"
+  },
+  "1008": {
+    "en_name": "Vodka",
+    "jp_name": "ウオッカ",
+    "slug": "vodka"
+  },
+  "1009": {
+    "en_name": "Daiwa Scarlet",
+    "jp_name": "ダイワスカーレット",
+    "slug": "daiwa-scarlet"
+  },
+  "1010": {
+    "en_name": "Taiki Shuttle",
+    "jp_name": "タイキシャトル",
+    "slug": "taiki-shuttle"
+  },
+  "1011": {
+    "en_name": "Grass Wonder",
+    "jp_name": "グラスワンダー",
+    "slug": "grass-wonder"
+  },
+  "1012": {
+    "en_name": "Hishi Amazon",
+    "jp_name": "ヒシアマゾン",
+    "slug": "hishi-amazon"
+  },
+  "1013": {
+    "en_name": "Mejiro McQueen",
+    "jp_name": "メジロマックイーン",
+    "slug": "mejiro-mcqueen"
+  },
+  "1014": {
+    "en_name": "El Condor Pasa",
+    "jp_name": "エルコンドルパサー",
+    "slug": "el-condor-pasa"
+  },
+  "1016": {
+    "en_name": "Narita Brian",
+    "jp_name": "ナリタブライアン",
+    "slug": "narita-brian"
+  },
+  "1017": {
+    "en_name": "Symboli Rudolf",
+    "jp_name": "シンボリルドルフ",
+    "slug": "symboli-rudolf"
+  },
+  "1018": {
+    "en_name": "Air Groove",
+    "jp_name": "エアグルーヴ",
+    "slug": "air-groove"
+  },
+  "1019": {
+    "en_name": "Agnes Digital",
+    "jp_name": "アグネスデジタル",
+    "slug": "agnes-digital"
+  },
+  "1020": {
+    "en_name": "Seiun Sky",
+    "jp_name": "セイウンスカイ",
+    "slug": "seiun-sky"
+  },
+  "1021": {
+    "en_name": "Tamamo Cross",
+    "jp_name": "タマモクロス",
+    "slug": "tamamo-cross"
+  },
+  "1022": {
+    "en_name": "Fine Motion",
+    "jp_name": "ファインモーション",
+    "slug": "fine-motion"
+  },
+  "1023": {
+    "en_name": "Biwa Hayahide",
+    "jp_name": "ビワハヤヒデ",
+    "slug": "biwa-hayahide"
+  },
+  "1024": {
+    "en_name": "Mayano Top Gun",
+    "jp_name": "マヤノトップガン",
+    "slug": "mayano-top-gun"
+  },
+  "1025": {
+    "en_name": "Manhattan Cafe",
+    "jp_name": "マンハッタンカフェ",
+    "slug": "manhattan-cafe"
+  },
+  "1026": {
+    "en_name": "Mihono Bourbon",
+    "jp_name": "ミホノブルボン",
+    "slug": "mihono-bourbon"
+  },
+  "1027": {
+    "en_name": "Mejiro Ryan",
+    "jp_name": "メジロライアン",
+    "slug": "mejiro-ryan"
+  },
+  "1029": {
+    "en_name": "Yukino Bijin",
+    "jp_name": "ユキノビジン",
+    "slug": "yukino-bijin"
+  },
+  "1030": {
+    "en_name": "Rice Shower",
+    "jp_name": "ライスシャワー",
+    "slug": "rice-shower"
+  },
+  "1031": {
+    "en_name": "Ines Fujin",
+    "jp_name": "アイネスフウジン",
+    "slug": "ines-fujin"
+  },
+  "1032": {
+    "en_name": "Agnes Tachyon",
+    "jp_name": "アグネスタキオン",
+    "slug": "agnes-tachyon"
+  },
+  "1033": {
+    "en_name": "Admire Vega",
+    "jp_name": "アドマイヤベガ",
+    "slug": "admire-vega"
+  },
+  "1034": {
+    "en_name": "Inari One",
+    "jp_name": "イナリワン",
+    "slug": "inari-one"
+  },
+  "1035": {
+    "en_name": "Winning Ticket",
+    "jp_name": "ウイニングチケット",
+    "slug": "winning-ticket"
+  },
+  "1036": {
+    "en_name": "Air Shakur",
+    "jp_name": "エアシャカール",
+    "slug": "air-shakur"
+  },
+  "1037": {
+    "en_name": "Eishin Flash",
+    "jp_name": "エイシンフラッシュ",
+    "slug": "eishin-flash"
+  },
+  "1038": {
+    "en_name": "Curren Chan",
+    "jp_name": "カレンチャン",
+    "slug": "curren-chan"
+  },
+  "1040": {
+    "en_name": "Gold City",
+    "jp_name": "ゴールドシチー",
+    "slug": "gold-city"
+  },
+  "1041": {
+    "en_name": "Sakura Bakushin O",
+    "jp_name": "サクラバクシンオー",
+    "slug": "sakura-bakushin-o"
+  },
+  "1044": {
+    "en_name": "Sweep Tosho",
+    "jp_name": "スイープトウショウ",
+    "slug": "sweep-tosho"
+  },
+  "1045": {
+    "en_name": "Super Creek",
+    "jp_name": "スーパークリーク",
+    "slug": "super-creek"
+  },
+  "1046": {
+    "en_name": "Smart Falcon",
+    "jp_name": "スマートファルコン",
+    "slug": "smart-falcon"
+  },
+  "1047": {
+    "en_name": "Zenno Rob Roy",
+    "jp_name": "ゼンノロブロイ",
+    "slug": "zenno-rob-roy"
+  },
+  "1049": {
+    "en_name": "Nakayama Festa",
+    "jp_name": "ナカヤマフェスタ",
+    "slug": "nakayama-festa"
+  },
+  "1050": {
+    "en_name": "Narita Taishin",
+    "jp_name": "ナリタタイシン",
+    "slug": "narita-taishin"
+  },
+  "1051": {
+    "en_name": "Nishino Flower",
+    "jp_name": "ニシノフラワー",
+    "slug": "nishino-flower"
+  },
+  "1052": {
+    "en_name": "Haru Urara",
+    "jp_name": "ハルウララ",
+    "slug": "haru-urara"
+  },
+  "1053": {
+    "en_name": "Bamboo Memory",
+    "jp_name": "バンブーメモリー",
+    "slug": "bamboo-memory"
+  },
+  "1055": {
+    "en_name": "Marvelous Sunday",
+    "jp_name": "マーベラスサンデー",
+    "slug": "marvelous-sunday"
+  },
+  "1056": {
+    "en_name": "Matikanefukukitaru",
+    "jp_name": "マチカネフクキタル",
+    "slug": "matikanefukukitaru"
+  },
+  "1058": {
+    "en_name": "Meisho Doto",
+    "jp_name": "メイショウドトウ",
+    "slug": "meisho-doto"
+  },
+  "1059": {
+    "en_name": "Mejiro Dober",
+    "jp_name": "メジロドーベル",
+    "slug": "mejiro-dober"
+  },
+  "1061": {
+    "en_name": "King Halo",
+    "jp_name": "キングヘイロー",
+    "slug": "king-halo"
+  },
+  "1063": {
+    "en_name": "Ikuno Dictus",
+    "jp_name": "イクノディクタス",
+    "slug": "ikuno-dictus"
+  },
+  "1064": {
+    "en_name": "Mejiro Palmer",
+    "jp_name": "メジロパーマー",
+    "slug": "mejiro-palmer"
+  },
+  "1066": {
+    "en_name": "Twin Turbo",
+    "jp_name": "ツインターボ",
+    "slug": "twin-turbo"
+  },
+  "1067": {
+    "en_name": "Satono Diamond",
+    "jp_name": "サトノダイヤモンド",
+    "slug": "satono-diamond"
+  },
+  "1068": {
+    "en_name": "Kitasan Black",
+    "jp_name": "キタサンブラック",
+    "slug": "kitasan-black"
+  },
+  "1071": {
+    "en_name": "Mejiro Ardan",
+    "jp_name": "メジロアルダン",
+    "slug": "mejiro-ardan"
+  },
+  "1085": {
+    "en_name": "Daiichi Ruby",
+    "jp_name": "ダイイチルビー",
+    "slug": "daiichi-ruby"
+  },
+  "1087": {
+    "en_name": "Aston Machan",
+    "jp_name": "アストンマーチャン",
+    "slug": "aston-machan"
+  },
+  "1092": {
+    "en_name": "Dantsu Flame",
+    "jp_name": "ダンツフレーム",
+    "slug": "dantsu-flame"
+  },
+  "1098": {
+    "en_name": "Copano Rickey",
+    "jp_name": "コパノリッキー",
+    "slug": "copano-rickey"
+  },
+  "1099": {
+    "en_name": "Hokko Tarumae",
+    "jp_name": "ホッコータルマエ",
+    "slug": "hokko-tarumae"
+  },
+  "1100": {
+    "en_name": "Wonder Acute",
+    "jp_name": "ワンダーアキュート",
+    "slug": "wonder-acute"
+  },
+  "1132": {
+    "en_name": "Loves Only You",
+    "jp_name": "ラヴズオンリーユー",
+    "slug": "loves-only-you"
+  }
+}

@@ -1,0 +1,133 @@
+# REPLITCLEANUPREPORT.md
+
+# Repository Cleanup Report
+
+## Purpose
+
+This file tracks code that may be:
+
+* unused
+* duplicated
+* outdated
+* heavy on resources
+* safe to refactor or remove
+
+It is used to improve performance, reduce complexity, and prevent technical debt.
+
+---
+
+# UNUSED OR ORPHANED FILES
+
+Files listed here are not imported or referenced anywhere in the codebase.
+
+| File           | Reason                             | Action                |
+| -------------- | ---------------------------------- | --------------------- |
+| (to be filled) | Not referenced in any import graph | Remove / verify usage |
+
+---
+
+# POSSIBLY UNUSED EXPORTS
+
+Functions or classes that are exported but not used anywhere.
+
+| Symbol         | File | Notes |
+| -------------- | ---- | ----- |
+| (to be filled) |      |       |
+
+---
+
+# DUPLICATE OR OVERLAPPING LOGIC
+
+Modules that appear to implement similar or identical functionality.
+
+| Module A | Module B | Overlap |
+| -------- | -------- | ------- |
+|          |          |         |
+
+---
+
+# HEAVY / PERFORMANCE-IMPACTING MODULES
+
+Modules that may affect startup time, memory, or runtime performance.
+
+| File                     | Reason                        | Suggested Action             |
+| ------------------------ | ----------------------------- | ---------------------------- |
+| trainer/screenshotter.js | Playwright rendering overhead | Cache results / lazy load    |
+| timeline/scraper.js      | Frequent scraping cycles      | Optimize interval / batching |
+
+---
+
+# LEGACY OR DEPRECATED CODE
+
+Old systems that have been replaced but still exist in the codebase.
+
+| File | Replacement | Notes |
+| ---- | ----------- | ----- |
+|      |             |       |
+
+---
+
+# LOW-USAGE FEATURES
+
+Features that exist but are rarely or never triggered.
+
+| Feature | Location | Usage Frequency |
+| ------- | -------- | --------------- |
+|         |          |                 |
+
+---
+
+# NPM DEPENDENCY CLEANUP
+
+Unused or redundant dependencies.
+
+| Package | Status                  | Action |
+| ------- | ----------------------- | ------ |
+|         | unused                  | remove |
+|         | duplicate functionality | review |
+
+---
+
+# CIRCULAR OR COMPLEX DEPENDENCIES
+
+Modules that depend on each other in a way that increases complexity.
+
+| Module | Dependency Loop |
+| ------ | --------------- |
+|        |                 |
+
+---
+
+# RECOMMENDED ACTIONS
+
+Prioritized cleanup tasks:
+
+1. Remove confirmed unused files
+2. Merge duplicate logic modules
+3. Lazy-load heavy services (Playwright, scrapers)
+4. Simplify database access layers
+5. Remove legacy code paths
+6. Run dependency audit (npm + Knip)
+
+---
+
+# HOW THIS REPORT IS GENERATED
+
+This report should ideally be generated using:
+
+* AST analysis (Knip or similar tool)
+* import graph scanning
+* runtime usage observation
+* manual review of feature usage
+
+---
+
+# NOTES
+
+* Do NOT remove files without verifying runtime usage (cron jobs, event handlers, dynamic imports).
+* Discord bots often appear "unused" but are event-driven.
+* Scrapers and scheduled tasks may not be directly imported but still active.
+
+---
+
+Last Updated: YYYY-MM-DD

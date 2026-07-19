@@ -1,0 +1,188 @@
+Perform a fresh, independent red-team audit of the entire repository.
+
+Important instructions:
+
+* Ignore previous audit reports and fix reports.
+* Do not assume any reported fix is correct.
+* Verify everything from source code.
+* Do not praise the codebase.
+* Focus only on remaining risks, defects, inconsistencies, and technical debt.
+* Provide evidence with file paths, line numbers, and code snippets.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PART 1 — MULTI-CIRCLE SAFETY AUDIT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Audit every command, task, utility, and database module.
+
+Search for:
+
+* getCircleSnapshot(
+* buildSnapshot(
+* syncCircleData(
+* getMembers(
+* upsertMember(
+* config.circleId
+* activeCircle
+* currentCircle
+
+For every occurrence:
+
+* file path
+* line number
+* surrounding code
+* whether it is circle-scoped or unscoped
+* whether it is safe
+* whether it can accidentally default to Circle 1
+* whether it can operate on the wrong circle
+
+Flag all findings.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PART 2 — COMMAND AUDIT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Audit every file in commands/.
+
+For each command determine:
+
+* Does it read member data?
+* Does it write member data?
+* Does it modify quotas?
+* Does it rebuild snapshots?
+* Is it fully multi-circle aware?
+* Can it accidentally affect Circle 1 only?
+* Can it affect the wrong circle?
+
+Produce a table showing findings.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PART 3 — TASK AUDIT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Audit every file in tasks/.
+
+Check for:
+
+* hardcoded circle assumptions
+* use of config.circleId
+* quota lookup inconsistencies
+* stale cache risks
+* snapshot inconsistencies
+* unscoped member access
+* race conditions
+* scheduler bugs
+
+Provide findings with evidence.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PART 4 — QUOTA SYSTEM AUDIT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Search entire repository for:
+
+* quotaDaily
+* quotaWeekly
+* quotaMonthly
+* quota_c2_
+* monthly_minimum
+* resolveQuota
+
+For every occurrence:
+
+* file path
+* line number
+* whether active or dead code
+* whether migration-only code
+* whether it should be removed
+
+Identify any remaining quota inconsistencies.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PART 5 — DUPLICATE LOGIC AUDIT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Search for duplicated implementations of:
+
+* TIERS
+* FALCO_POOL
+* image pools
+* quota resolution
+* member lookup
+* milestone processing
+* snapshot generation
+
+List all duplicates and recommend consolidation opportunities.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PART 6 — DATA FLOW VERIFICATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Trace the complete lifecycle of a trainer belonging to Circle 5.
+
+Follow:
+
+* Discord sync
+* database storage
+* member lookup
+* quota lookup
+* snapshot generation
+* milestone generation
+* join date lookup
+* report generation
+* resume card generation
+
+Identify every file involved.
+
+Verify whether Circle 5 follows exactly the same code paths as Circle 1.
+
+Report any divergence.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PART 7 — ARCHITECTURE RISKS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Identify:
+
+* data corruption risks
+* stale cache risks
+* race conditions
+* incorrect cache invalidation
+* orphaned code paths
+* deprecated APIs still in use
+* dead commands
+* dead tasks
+* dead configuration keys
+* missing validation
+* hidden Circle 1 assumptions
+
+Rank findings:
+
+CRITICAL
+HIGH
+MEDIUM
+LOW
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FINAL OUTPUT FORMAT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Executive Summary
+
+2. Critical Findings
+
+3. High Findings
+
+4. Medium Findings
+
+5. Low Findings
+
+6. Remaining Technical Debt
+
+7. Multi-Circle Readiness Assessment
+
+8. Production Readiness Assessment
+
+9. Recommended Next Fixes (Top 10)
+
+Do not provide generic advice. Every finding must reference actual code locations and evidence from the repository.

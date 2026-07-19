@@ -1,0 +1,5 @@
+{
+  "_note": "Skill ID to name mapping. Populated by tasks/updateGameData.js every 24 hours.",
+  "_updated": null,
+  "skills": {}
+}

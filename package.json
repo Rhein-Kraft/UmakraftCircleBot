@@ -1,0 +1,42 @@
+{
+  "name": "uma-circle-bot",
+  "version": "1.0.0",
+  "description": "Discord bot for managing the UmaKraft Uma.moe circle (fan tracking, leaderboards, milestones, scheduled posts).",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node start.js",
+    "dev": "node --watch index.js",
+    "deploy-commands": "node deploy-commands.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "update-docs": "node scripts/generateDocs.js",
+    "install-hooks": "node scripts/install-hooks.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "axios": "^1.18.1",
+    "better-sqlite3": "^12.11.1",
+    "cheerio": "^1.2.0",
+    "discord.js": "^14.26.5",
+    "dotenv": "^16.6.1",
+    "googleapis": "^173.0.0",
+    "node-cron": "^3.0.3",
+    "openai": "^6.47.0",
+    "playwright-core": "^1.61.1"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.7.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.9.5",
+    "vitest": "^4.1.10"
+  }
+}

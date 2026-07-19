@@ -1,0 +1,399 @@
+# `/leaderboard` Specification
+
+## Overview
+
+`/leaderboard` displays the highest-performing trainers within the Discord server based on accumulated fan gain.
+
+The command is designed to promote healthy competition, recognize top performers, and provide guild leaders with a quick overview of member activity.
+
+All leaderboard responses are generated as Image Reports.
+
+---
+
+# Command
+
+```text
+/leaderboard
+```
+
+When no autocomplete option is selected, the bot displays the **Daily Leaderboard**.
+
+---
+
+# Autocomplete Options
+
+* Daily
+* Weekly
+* Monthly
+
+---
+
+# Default Behaviour
+
+```
+/leaderboard
+```
+
+Automatically displays the **Daily Leaderboard**.
+
+Reason:
+
+Daily rankings are the most frequently viewed and provide immediate feedback to members.
+
+---
+
+# Daily Leaderboard
+
+Display the Top 10 members ranked by today's fan gain.
+
+---
+
+## Header
+
+Display:
+
+* Bot Logo
+* Server Name
+* Report Title
+* Current Date
+* Last Updated Timestamp
+
+Example
+
+```
+🏆 Daily Leaderboard
+
+Top 10 Trainers
+
+Updated
+
+21:45 UTC
+```
+
+---
+
+# Podium (Top 3)
+
+Highlight the top three members with larger profile cards.
+
+Display:
+
+* Rank
+* Discord Display Name
+* Trainer Name
+* Daily Fan Gain
+
+Example
+
+```
+🥇 Falcon
+Trainer: Falcon
++2,314,522 Fans
+
+🥈 Shadow
+Trainer: Shadow
++2,102,111 Fans
+
+🥉 Nova
+Trainer: Nova
++1,984,330 Fans
+```
+
+---
+
+# Rankings (4–10)
+
+Display:
+
+* Rank
+* Trainer Name
+* Daily Fan Gain
+
+Example
+
+```
+4. Alpha
++1,872,522
+
+5. Luna
++1,765,111
+
+6. Blaze
++1,702,334
+```
+
+---
+
+# Guild Statistics
+
+Display:
+
+* Members Completed Daily Target
+* Total Linked Members
+* Completion Percentage
+* Highest Fan Gain Today
+* Average Daily Fan Gain
+
+Example
+
+```
+Completed
+
+83 / 106
+
+Completion
+
+78%
+
+Highest Gain
+
+2.31M
+
+Average Gain
+
+1.42M
+```
+
+---
+
+# Your Position
+
+Always display the requesting member's current ranking, even if they are outside the Top 10.
+
+Example
+
+```
+Your Position
+
+#58
+
+Today's Gain
+
+842,311
+
+Need
+
+153,220 Fans
+
+to overtake #57
+```
+
+If the requesting member is inside the Top 10, this section displays:
+
+```
+You're currently in the Top 10.
+```
+
+---
+
+# Footer
+
+Display:
+
+* Report Generated Time
+* Data Source (uma.moe)
+* Bot Version
+
+---
+
+# Weekly Leaderboard
+
+Displays:
+
+* Top 10 Weekly Fan Gain
+* Weekly Rankings
+* Weekly Guild Statistics
+* Requesting Member Position
+
+Ranking is calculated using accumulated fan gain since Monday.
+
+---
+
+# Monthly Leaderboard
+
+Displays:
+
+* Top 10 Monthly Fan Gain
+* Monthly Rankings
+* Monthly Guild Statistics
+* Requesting Member Position
+
+Ranking is calculated using accumulated fan gain during the current month.
+
+---
+
+# Phase 2 Features
+
+The following features require historical tracking or additional database fields.
+
+---
+
+## Rank Movement
+
+Display movement since the previous ranking update.
+
+Example
+
+```
+⬆ +3
+
+Falcon
+
+Yesterday #4
+
+Today #1
+```
+
+or
+
+```
+⬇ -2
+
+Shadow
+
+Yesterday #1
+
+Today #3
+```
+
+---
+
+## Biggest Climber
+
+Highlight the member who gained the most ranking positions.
+
+Example
+
+```
+🚀 Biggest Climber
+
+Nova
+
++15 Positions
+```
+
+---
+
+## Highest Fan Gain
+
+Highlight the member with the highest fan gain during the selected period.
+
+Example
+
+```
+🔥 Highest Fan Gain
+
+Falcon
+
+2.31M Fans
+```
+
+---
+
+## Personal Best Badge
+
+Display a badge for members who achieved a new personal best.
+
+Example
+
+```
+💎 New Personal Best
+```
+
+---
+
+## Achievement Badges
+
+Display earned badges beside member names.
+
+Examples
+
+* 🔥 Daily Target Completed
+* 🏆 Rank #1
+* ⭐ Top 10
+* 💎 Personal Best
+* 🚀 Biggest Climber
+
+---
+
+## Rank History
+
+Allow members to compare rankings across previous days.
+
+Display:
+
+* Yesterday's Rank
+* Weekly Best Rank
+* Monthly Best Rank
+
+---
+
+## Historical Leaderboards
+
+Support viewing archived leaderboards.
+
+Examples
+
+* Yesterday
+* Last Week
+* Previous Month
+
+This requires historical leaderboard snapshots.
+
+---
+
+## Guild Analytics
+
+Display additional statistics.
+
+* Average Fan Gain
+* Median Fan Gain
+* Highest Fan Gain
+* Lowest Fan Gain
+* Members Completed
+* Members Remaining
+* Completion Percentage
+* Total Fans Earned
+* Guild Growth Trend
+
+---
+
+## Leaderboard Charts
+
+Generate HTML/CSS charts rendered through Chromium.
+
+Supported Charts
+
+* Top 10 Comparison Bar Chart
+* Daily Fan Gain Distribution
+* Weekly Distribution
+* Monthly Distribution
+* Guild Growth Trend
+
+---
+
+# Design Principles
+
+* Every leaderboard is generated as an Image Report.
+* Highlight competition rather than simply listing numbers.
+* Celebrate top performers with podium styling.
+* Always display the requesting member's position.
+* Keep the default report concise and mobile-friendly.
+* Reserve advanced analytics for future phases.
+* Ensure all rankings are calculated from verified stored fan gain data.
+
+---
+
+# Milestone Goal
+
+The `/leaderboard` command should become the primary competitive feature of the bot.
+
+A single image should allow every member to instantly understand:
+
+* Who is leading.
+* Their own current position.
+* The gap to the next rank.
+* Guild completion progress.
+* Overall guild performance.
+
+Future milestones will expand the leaderboard into a complete competitive analytics system with historical rankings, movement tracking, achievement badges, advanced statistics, and visual charts while maintaining accurate and reliable data.

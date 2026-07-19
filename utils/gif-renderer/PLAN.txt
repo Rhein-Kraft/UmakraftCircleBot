@@ -1,0 +1,70 @@
+GIF RENDERER PLAN
+=================
+
+Goal
+----
+Add animated GIF output for greeting DM cards only (renderGreetingDm).
+Effect: shining/shimmer text on title words + glowing pulse on highlighted elements.
+All other cards (warnings, milestones, tally results, leaderboard) stay as PNG.
+
+
+New files to create
+-------------------
+utils/gif-renderer/gifEncoder.js
+  - renderHtmlGif(html, width, frameCount, frameDurationMs) → Promise<Buffer>
+  - Reuses the existing Playwright browser from imageReport-browser.js (getBrowser)
+  - Loads the page once, waits for networkidle
+  - Pauses all CSS animations via page.evaluate:
+      document.getAnimations().forEach(a => a.pause())
+  - For each frame i (0 to frameCount-1):
+      1. Seek all animations to (i / frameCount) * totalDurationMs via a.currentTime
+      2. Screenshot the first child element (same target as renderHtml)
+      3. Push PNG buffer into frames array
+  - Decode each PNG frame to raw RGBA using pngjs
+  - Encode all frames into animated GIF using gif-encoder-2
+  - Return the final GIF Buffer
+
+
+Files to modify
+---------------
+fantracking/reports/greeting.js
+  - Add CSS @keyframes to the DM card HTML template:
+      shimmer  — white/gold gradient sweep across .hl spans (background-clip: text)
+      glowPulse — text-shadow brightness oscillation on .htitle
+  - Animation duration: 2000ms, both set to linear/ease-in-out infinite
+  - Import renderHtmlGif from utils/gif-renderer/gifEncoder.js
+  - Change renderGreetingDm to call renderHtmlGif(html, 620, 20, 100)
+    instead of renderHtml(html, 620)
+  - Return value stays Promise<Buffer> — no interface change for callers
+
+tasks/dailyGreetingReport.js
+  - Change attachment filename in sendPerUserGreetings from
+      greeting-<type>-<date>.png  →  greeting-<type>-<date>.gif
+  - No other changes needed
+
+
+Packages to install
+-------------------
+gif-encoder-2   — pure JS GIF encoder, accepts raw RGBA frame buffers
+pngjs           — pure JS PNG decoder, converts Playwright PNG screenshots to RGBA
+
+
+Animation spec
+--------------
+Frames      : 20
+Frame delay : 100ms each
+Loop length : 2000ms (2 second seamless loop)
+Shimmer     : background-position moves from -200% to +200% across the .hl text
+Glow pulse  : text-shadow expands from 8px to 24px and back on .htitle
+
+Estimated GIF size per card: ~150–250 KB
+Color depth: 256 colours per frame (GIF limit)
+Dark background + single gold/white highlight → quantizes cleanly, minimal banding
+
+
+What is NOT changing
+--------------------
+- renderDailyGreeting (channel post) stays PNG
+- All warning, milestone, tally, leaderboard, achievement cards stay PNG
+- renderHtml in imageReport-browser.js is unchanged
+- No changes to the Discord attachment send logic beyond the filename extension
